@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local
+
+# envv example (opt-in for committing)
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +43,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
+app/generated/
+
+# Prisma
+/prisma/migrations
+dev.db
+dv.db-journal
+
+# IA Agents & Notes
+AGENTS.md
+CLAUDE.md
