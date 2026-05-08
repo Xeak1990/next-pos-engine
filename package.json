@@ -21,6 +21,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
     "next": "16.2.2",
     "pg": "^8.20.0",
@@ -28,6 +29,7 @@
     "pusher-js": "^8.4.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "tailwind-merge": "^3.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Paleta de colores oficial [cite: 434] */
+  --bt-navy: #1A3A5F;
+  --bt-orange: #E8621A;
+  --bt-dark: #0F0F0F;
+  --bt-surface: #1A1A1A;
+  --bt-success: #2ECC71;
+  --bt-error: #E74C3C;
+}
+
+body {
+  background-color: var(--bt-dark);
+  color: #F0F0F0;
+  /* Tipografía DM Sans para el cuerpo [cite: 436] */
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Tipografía Bebas Neue para encabezados [cite: 436] */
+h1, h2, h3, .font-bebas {
+  font-family: 'Bebas Neue', cursive;
+  letter-spacing: 0.05em;
+}
+
+/* Tipografía JetBrains Mono para precios y folios [cite: 436] */
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
