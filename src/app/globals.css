@@ -1,31 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Paleta de colores oficial [cite: 434] */
-  --bt-navy: #1A3A5F;
   --bt-orange: #E8621A;
   --bt-dark: #0F0F0F;
   --bt-surface: #1A1A1A;
-  --bt-success: #2ECC71;
-  --bt-error: #E74C3C;
+}
+
+/* Configuración de clases de utilidad para las fuentes  */
+@layer base {
+  .font-bebas {
+    font-family: 'Bebas Neue', sans-serif;
+  }
+  .font-sans {
+    font-family: 'DM Sans', sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
 }
 
 body {
   background-color: var(--bt-dark);
   color: #F0F0F0;
-  /* Tipografía DM Sans para el cuerpo [cite: 436] */
-  font-family: 'DM Sans', sans-serif;
-}
-
-/* Tipografía Bebas Neue para encabezados [cite: 436] */
-h1, h2, h3, .font-bebas {
-  font-family: 'Bebas Neue', cursive;
-  letter-spacing: 0.05em;
-}
-
-/* Tipografía JetBrains Mono para precios y folios [cite: 436] */
-.font-mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'DM Sans', sans-serif; /* RNF03: Texto base legible  */
 }

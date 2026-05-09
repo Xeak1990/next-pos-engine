@@ -8,7 +8,7 @@ import { useCart } from "../../lib/CartContext";
  * RF01: Interfaz estricta basada en el Diccionario de Datos[cite: 228, 379].
  * Se eliminan los tipos 'any' para garantizar la integridad del sistema.
  */
-interface PosProduct {
+export interface PosProduct {
   id: string;
   name: string;
   brand: string;
@@ -16,7 +16,7 @@ interface PosProduct {
   size: string;
   price: string;
   stock: number;
-  storeName: string; // En el mapeo del servidor, este campo debe recibir 'item.store.location' 
+  storeName: string; // En el mapeo del servidor, este campo debe recibir 'item.store.location'
 }
 
 export default function ProductListClient({
@@ -26,14 +26,24 @@ export default function ProductListClient({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-  
-  /** * Sincronización con DB: El valor inicial debe coincidir exactamente 
+
+  /** * Sincronización con DB: El valor inicial debe coincidir exactamente
    * con la columna 'location' de tu tabla Store.
    */
-  const [selectedStore, setSelectedStore] = useState("Plaza Americas, Xalapa, Ver.");
-  
+  const [selectedStore, setSelectedStore] = useState(
+    "Plaza Americas, Xalapa, Ver.",
+  );
+
   const { addItem } = useCart();
-  
+
+  const normalizeString = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+
   // Categorías oficiales según Mockup 6 [cite: 306]
   const categories = [
     "TODOS",
@@ -44,20 +54,33 @@ export default function ProductListClient({
     "LIFESTYLE",
   ];
 
+  const normalizedSelectedStore = normalizeString(selectedStore);
+  const selectedCategoryNormalized = normalizeString(selectedCategory);
+
+  console.log("ProductListClient products:", products, "selectedStore:", selectedStore, "normalizedStore:", normalizedSelectedStore);
+
   /**
    * RF08: Lógica de filtrado omnicanal por sucursal y categoría[cite: 228].
-   * Se utiliza toUpperCase() para evitar errores de sensibilidad entre DB y cliente.
+   * Se usa normalización con trim() y toLowerCase() en ambas partes.
    */
+
   const filteredProducts = products.filter((p: PosProduct) => {
-    const matchesStore = p.storeName.trim() === selectedStore.trim();
-    const matchesCategory = 
-      selectedCategory === "TODOS" || 
-      p.category.toUpperCase() === selectedCategory.toUpperCase();
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const storeName = normalizeString(p.storeName || "");
+    const matchesStore = storeName === normalizedSelectedStore;
+
+    const category = normalizeString(p.category || "");
+    const matchesCategory =
+      selectedCategory === "TODOS" ||
+      category === selectedCategoryNormalized;
+
+    const normalizedSearch = normalizeString(searchTerm);
+    const matchesSearch =
+      normalizedSearch === "" ||
+      normalizeString(p.name).includes(normalizedSearch) ||
+      normalizeString(p.size).includes(normalizedSearch);
+
     return matchesStore && matchesCategory && matchesSearch;
   });
-
   return (
     <div className="space-y-6">
       {/* Selector de Sucursal - Estética Mockup 6 [cite: 306, 434] */}
@@ -115,7 +138,7 @@ export default function ProductListClient({
             <div
               key={product.id}
               className={`p-8 bg-[#1A1A1A] border border-[#333333] rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.4)] flex flex-col justify-between transition-all hover:border-[#E8621A] ${
-                product.stock === 0 && "opacity-50 grayscale"
+                product.stock === 0 ? "opacity-50 grayscale" : ""
               }`}
             >
               <div className="mb-6">
@@ -130,6 +153,11 @@ export default function ProductListClient({
                 <p className="text-2xl font-mono font-bold text-[#2ECC71]">
                   {formatCurrency(product.price)}
                 </p>
+                {product.stock === 0 && (
+                  <span className="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-[#E74C3C] text-[10px] font-bold uppercase tracking-widest text-white">
+                    AGOTADO
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-between border-t border-gray-900 pt-6">
@@ -152,6 +180,7 @@ export default function ProductListClient({
                           size: product.size,
                           price: Number(product.price),
                           quantity: 1,
+                          stockAvailable: product.stock, // Pasamos el stock real para validación en CartContext
                         },
                         product.stock,
                       )

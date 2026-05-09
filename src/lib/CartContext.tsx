@@ -8,6 +8,7 @@ interface CartItem {
   size: string;
   price: number;
   quantity: number;
+  stockAvailable: number; // Nuevo campo para controlar el stock
 }
 
 interface CartContextType {
@@ -27,9 +28,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => {
       const existing = prev.find((i) => i.variantId === newItem.variantId);
       if (existing) {
-        // Validamos: si la cantidad actual + 1 supera el stock, no hacemos nada
-        if (existing.quantity >= stockAvailable) {
-          alert("STOCK MÁXIMO ALCANZADO");
+        // Usamos el stock que ya guardamos en el item
+        if (existing.quantity >= existing.stockAvailable) {
+          alert(`STOCK MÁXIMO ALCANZADO (${existing.stockAvailable} UDS)`);
           return prev;
         }
         return prev.map((i) =>
@@ -38,7 +39,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : i,
         );
       }
-      return [...prev, newItem];
+      // Cuando es nuevo, guardamos el stock disponible que viene del servidor
+      return [...prev, { ...newItem, stockAvailable }];
     });
   };
 
@@ -62,7 +64,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setItems([]);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, clearCart, removeOne }}>
+    <CartContext.Provider
+      value={{ items, addItem, removeItem, clearCart, removeOne }}
+    >
       {children}
     </CartContext.Provider>
   );
