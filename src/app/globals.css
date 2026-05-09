@@ -28,3 +28,46 @@ body {
   color: #F0F0F0;
   font-family: 'DM Sans', sans-serif; /* RNF03: Texto base legible  */
 }
+
+.report-print-area {
+  padding: 0;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print,
+  header,
+  nav,
+  footer,
+  button,
+  a[href] {
+    display: none !important;
+  }
+
+  .report-print-area {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .report-print-area * {
+    color: #000000 !important;
+    background: transparent !important;
+    border-color: #000000 !important;
+  }
+
+  .report-print-area table {
+    border-collapse: collapse !important;
+  }
+
+  .report-print-area th,
+  .report-print-area td {
+    color: #000000 !important;
+  }
+}
