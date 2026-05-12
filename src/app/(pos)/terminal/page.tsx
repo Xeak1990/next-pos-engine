@@ -29,8 +29,8 @@ export default async function TerminalPage() {
           <p className="mb-4 text-lg text-white">Bienvenido al punto de venta.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl bg-[#131313] p-5">
-              <h2 className="text-sm uppercase tracking-[0.25em] text-gray-500">ROL</h2>
-              <p className="mt-3 text-xl font-semibold text-[#E8621A]">{auth.role}</p>
+              <h2 className="text-sm uppercase tracking-[0.25em] text-gray-500">Terminal</h2>
+              <p className="mt-3 text-xl font-semibold text-[#E8621A]">OPERATIVA</p>
             </div>
             <div className="rounded-2xl bg-[#131313] p-5">
               <h2 className="text-sm uppercase tracking-[0.25em] text-gray-500">Estado</h2>

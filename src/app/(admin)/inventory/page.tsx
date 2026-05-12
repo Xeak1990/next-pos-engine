@@ -26,6 +26,7 @@ export default async function InventoryPage() {
   const serializedInventory = inventoryData.map((item) => ({
     id: item.id,
     quantity: item.quantity,
+    storeId: item.storeId,
     variant: {
       size: item.variant.size,
       color: item.variant.color,

@@ -19,16 +19,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
+      console.log("User not found for email:", email);
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
     }
 
     const passwordMatches = await verifyPassword(password, user.password);
     if (!passwordMatches || !user.isActive) {
+      console.log("Password mismatch or user inactive for email:", email);
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
     }
 
     const token = await signAuthToken({
       userId: user.id,
+      name: user.name,
       email: user.email,
       role: user.role,
       storeId: user.storeId ?? null,

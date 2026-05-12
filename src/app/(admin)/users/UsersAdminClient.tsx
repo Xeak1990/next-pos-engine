@@ -30,6 +30,7 @@ export default function UsersAdminClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [formValues, setFormValues] = useState({
     name: "",
@@ -107,7 +108,7 @@ export default function UsersAdminClient({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, isActive }),
+        body: JSON.stringify({ id, isActive: !isActive }),
       });
 
       const data = await response.json();
@@ -125,32 +126,7 @@ export default function UsersAdminClient({
     }
   };
 
-  const handleUserDelete = async (id: string) => {
-    if (!confirm("¿Eliminar este usuario? Esta acción no se puede deshacer.")) {
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/users", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        setErrorMessage(data.error || "No se pudo eliminar el usuario.");
-        return;
-      }
-
-      setUsers((current) => current.filter((user) => user.id !== id));
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Error al eliminar el usuario.");
-    }
-  };
+  const filteredUsers = showInactive ? users : users.filter(user => user.isActive);
 
   return (
     <div className="max-w-[1440px] mx-auto py-8">
@@ -170,6 +146,17 @@ export default function UsersAdminClient({
       </div>
 
       <div className="overflow-x-auto rounded-3xl border border-gray-800 bg-[#1A1A1A] p-4 shadow-xl shadow-black/40">
+        <div className="mb-4">
+          <label className="flex items-center gap-2 text-gray-300">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="rounded border-gray-600 bg-gray-800 text-[#E8621A] focus:ring-[#E8621A]"
+            />
+            Mostrar usuarios inactivos
+          </label>
+        </div>
         <table className="min-w-full border-collapse text-left text-sm text-gray-200">
           <thead>
             <tr>
@@ -182,8 +169,8 @@ export default function UsersAdminClient({
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b border-gray-800 hover:bg-white/5 transition-colors even:bg-white/5">
+            {filteredUsers.map((user) => (
+              <tr key={user.id} className={`border-b border-gray-800 hover:bg-white/5 transition-colors even:bg-white/5 ${!user.isActive ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-4 text-white font-medium">{user.name}</td>
                 <td className="px-4 py-4 text-gray-300">{user.email}</td>
                 <td className="px-4 py-4 text-[#E8621A] font-bold">{user.role}</td>
@@ -192,28 +179,21 @@ export default function UsersAdminClient({
                 </td>
                 <td className="px-4 py-4">
                   <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${user.isActive ? "bg-green-500/15 text-green-300" : "bg-red-500/10 text-red-300"}`}>
-                    {user.isActive ? "Activo" : "Inactivo"}
+                    {user.isActive ? "Activo" : "DESACTIVADO"}
                   </span>
                 </td>
                 <td className="px-4 py-4 space-x-2">
                   <button
                     type="button"
-                    onClick={() => handleUserToggle(user.id, !user.isActive)}
-                    className="rounded-full bg-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-gray-600"
+                    onClick={() => handleUserToggle(user.id, user.isActive)}
+                    className={`rounded px-3 py-1 text-xs font-bold uppercase transition ${user.isActive ? "bg-red-500/15 text-red-300 hover:bg-red-500/25" : "bg-green-500/15 text-green-300 hover:bg-green-500/25"}`}
                   >
-                    {user.isActive ? "Desactivar" : "Activar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUserDelete(user.id)}
-                    className="rounded-full bg-red-700 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-red-600"
-                  >
-                    Eliminar
+                    {user.isActive ? "DESACTIVAR" : "REACTIVAR"}
                   </button>
                 </td>
               </tr>
             ))}
-            {users.length === 0 && (
+            {filteredUsers.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                   No hay usuarios registrados.

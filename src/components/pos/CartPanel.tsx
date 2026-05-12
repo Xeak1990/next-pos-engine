@@ -58,7 +58,7 @@ export default function CartPanel() {
     /* Estructura del Panel Lateral (Mockup 7):
        Se usa 'h-full min-h-0' y 'flex flex-col relative' para que el botón de pago permanezca anclado al fondo.
     */
-    <div className="bg-[#1A1A1A] border-l border-[#333333] h-full min-h-0 flex flex-col relative font-sans overflow-hidden">
+    <div className="bg-[#1A1A1A] border-l border-[#333333] h-screen min-h-0 flex flex-col relative font-sans overflow-hidden">
       
       {/* HEADER DEL CARRITO (Fijo arriba) [cite: 434, 436] */}
       <div className="p-6 border-b border-[#333333] flex-none">

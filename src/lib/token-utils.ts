@@ -4,6 +4,7 @@ const TOKEN_TTL_SECONDS = 60 * 60 * 8;
 
 type AuthPayload = {
   userId: string;
+  name: string;
   email: string;
   role: "ADMIN" | "MANAGER" | "CASHIER";
   storeId: string | null;

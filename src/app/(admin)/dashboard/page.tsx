@@ -1,35 +1,55 @@
 import { prisma } from "../../../lib/prisma";
 import { formatCurrency } from "../../../lib/utils";
+import { cookies } from "next/headers";
+import { verifyAuthToken } from "../../../lib/token-utils";
 
 export default async function DashboardPage() {
-  // RF10: Consultas para métricas en tiempo real [cite: 90, 214]
+  const cookieStore = await cookies();
+  const token = cookieStore.get("bt_auth")?.value;
+  const authPayload = token ? await verifyAuthToken(token) : null;
+
+  if (!authPayload) {
+    return <div>Unauthorized</div>;
+  }
+
+  const { role, storeId } = authPayload;
+
+  const whereClause = role === "MANAGER" && storeId ? { storeId } : {};
+
   const [totalSales, salesCount, lowStockItems, storesCount] = await Promise.all([
-    prisma.sale.aggregate({ _sum: { total: true } }), // Total vendido
-    prisma.sale.count(), // Número de transacciones
-    prisma.inventory.count({ where: { quantity: { lte: 2 } } }), // Alerta stock bajo (<= 2)
-    prisma.store.count(), // Sucursales registradas
+    prisma.sale.aggregate({
+      _sum: { total: true },
+      where: whereClause,
+    }),
+    prisma.sale.count({ where: whereClause }),
+    prisma.inventory.count({
+      where: {
+        quantity: { lte: 2 },
+        ...(role === "MANAGER" && storeId ? { storeId } : {}),
+      },
+    }),
+    role === "ADMIN" ? prisma.store.count() : 1,
   ]);
 
-const metrics = [
-  { 
-    name: "Ventas Totales", 
-    // Convertimos el valor a Number para evitar el error de asignación
-    value: formatCurrency(Number(totalSales._sum.total || 0)), 
-    color: "text-[#2ECC71]" 
-  },
-  { name: "Transacciones", value: salesCount.toString(), color: "text-white" },
-  { name: "Stock Bajo (Alerta)", value: lowStockItems.toString(), color: "text-[#E74C3C]" },
-  { name: "Sucursales", value: storesCount.toString(), color: "text-[#E8621A]" },
-];
+  const metrics = [
+    { 
+      name: "Ventas Totales", 
+      value: formatCurrency(Number(totalSales._sum.total || 0)), 
+      color: "text-[#2ECC71]" 
+    },
+    { name: "Transacciones", value: salesCount.toString(), color: "text-white" },
+    { name: "Stock Bajo (Alerta)", value: lowStockItems.toString(), color: "text-[#E74C3C]" },
+    { name: "Sucursales", value: storesCount.toString(), color: "text-[#E8621A]" },
+  ];
 
   return (
     <div className="p-8 bg-bt-dark min-h-screen">
       <header className="mb-10">
         <h1 className="text-4xl font-bebas text-white tracking-widest uppercase">Dashboard Operativo</h1>
-        <p className="text-gray-500 font-sans">Resumen general del estado de Ben Tenison[cite: 248].</p>
+        <p className="text-gray-500 font-sans">Resumen general del estado de Ben Tenison.</p>
       </header>
 
-      {/* Tarjetas de Métricas (KPIs) [cite: 256, 372] */}
+      {/* Tarjetas de Métricas (KPIs) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {metrics.map((metric) => (
           <div key={metric.name} className="bg-bt-surface border border-gray-800 p-6 rounded-xl shadow-lg">
@@ -42,7 +62,7 @@ const metrics = [
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Sección de Alerta de Inventario (RF03/RF07) [cite: 228, 256] */}
+        {/* Sección de Alerta de Inventario (RF03/RF07) */}
         <div className="bg-bt-surface border border-gray-800 p-6 rounded-xl">
           <h2 className="text-2xl font-bebas text-bt-orange mb-4 uppercase">Alertas de Stock Crítico</h2>
           {lowStockItems > 0 ? (
@@ -50,18 +70,18 @@ const metrics = [
               ⚠️ Tienes {lowStockItems} productos con inventario insuficiente.
             </p>
           ) : (
-            <p className="text-bt-success font-bold">✅ Todo el inventario está en niveles óptimos.</p>
+            <p className="text-green-400 font-bold">
+              ✅ Todos los productos tienen stock suficiente.
+            </p>
           )}
         </div>
 
-        {/* Acceso rápido a módulos (Sitemap) [cite: 71, 430] */}
-        <div className="bg-bt-surface border border-gray-800 p-6 rounded-xl flex items-center justify-center gap-4">
-           <a href="/terminal" className="flex-1 text-center py-4 bg-bt-navy rounded-lg font-bebas text-xl hover:bg-bt-orange transition-all">
-             Abrir POS [cite: 256]
-           </a>
-           <a href="/inventory" className="flex-1 text-center py-4 border border-gray-700 rounded-lg font-bebas text-xl hover:bg-gray-800 transition-all">
-             Gestionar Stock [cite: 400]
-           </a>
+        {/* Sección de Ventas Recientes */}
+        <div className="bg-bt-surface border border-gray-800 p-6 rounded-xl">
+          <h2 className="text-2xl font-bebas text-bt-orange mb-4 uppercase">Ventas Recientes</h2>
+          <p className="text-gray-400">
+            Funcionalidad de ventas recientes próximamente.
+          </p>
         </div>
       </div>
     </div>

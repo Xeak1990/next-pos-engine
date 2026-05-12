@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 const demoUsers = [
-  { label: "ADMIN", role: "ADMIN", email: "admin@bentenison.test", password: "Admin1234" },
-  { label: "GERENTE", role: "MANAGER", email: "manager@bentenison.test", password: "Manager1234" },
-  { label: "CAJERO", role: "CASHIER", email: "cashier@bentenison.test", password: "Cashier1234" },
+  { label: "ADMIN", role: "ADMIN", email: "admin@bentenison.mx", password: "1234" },
+  { label: "GERENTE", role: "MANAGER", email: "gerente@bentenison.mx", password: "1234" },
+  { label: "CAJERO", role: "CASHIER", email: "cajero@bentenison.mx", password: "1234" },
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +35,8 @@ export default function LoginPage() {
       }
 
       const role = data.user?.role as string | undefined;
-      if (role === "CASHIER") {
-        router.push("/terminal");
-      } else {
-        router.push("/dashboard");
-      }
+      const destination = role === "CASHIER" ? "/terminal" : "/dashboard";
+      window.location.href = destination;
     } catch (error) {
       console.error(error);
       setError("Error al iniciar sesión. Intenta de nuevo más tarde.");
@@ -76,7 +71,7 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            {demoUsers.map((demo) => (
+            {process.env.NODE_ENV === 'development' && demoUsers.map((demo) => (
               <button
                 key={demo.role}
                 type="button"
@@ -110,7 +105,7 @@ export default function LoginPage() {
             )}
 
             <label className="block">
-              <span className="mb-3 inline-block text-sm font-semibold uppercase tracking-[0.25em] text-gray-400">
+              <span className="mb-3 inline-block text-sm font-semibold uppercase tracking-[0.25em] text-gray-200">
                 Correo Electrónico
               </span>
               <div className="flex items-center gap-3 rounded-3xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white focus-within:border-[#E8621A]">
@@ -132,7 +127,7 @@ export default function LoginPage() {
             </label>
 
             <label className="block">
-              <span className="mb-3 inline-block text-sm font-semibold uppercase tracking-[0.25em] text-gray-400">
+              <span className="mb-3 inline-block text-sm font-semibold uppercase tracking-[0.25em] text-gray-200">
                 Contraseña
               </span>
               <div className="flex items-center gap-3 rounded-3xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white focus-within:border-[#E8621A]">

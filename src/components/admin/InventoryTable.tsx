@@ -2,11 +2,12 @@
 
 import { updateStock } from "../../actions/inventory";
 import { formatCurrency } from "../../lib/utils";
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
 
 interface InventoryItem {
   id: string;
   quantity: number;
+  storeId: string;
   variant: {
     size: string;
     color: string;
@@ -19,8 +20,25 @@ interface InventoryItem {
 
 export default function InventoryTable({ initialData }: { initialData: InventoryItem[] }) {
   const [inventory, setInventory] = useState(initialData);
+  const [isPending, startTransition] = useTransition();
+  const [user, setUser] = useState<{ role: string; storeId: string | null } | null>(null);
 
-  const handleAdjust = async (id: string, amount: number) => {
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUser({ role: data.role, storeId: data.storeId });
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleAdjust = (id: string, amount: number) => {
     // Optimistic update para que se sienta instantáneo (Sincronización real RF07)
     setInventory((prev) =>
       prev.map((item) =>
@@ -28,13 +46,21 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       )
     );
 
-    const result = await updateStock(id, amount);
-    if (!result.success) {
-      alert(result.error);
-      // Revertir si falla
-      setInventory(initialData);
-    }
+    startTransition(async () => {
+      const result = await updateStock(id, amount);
+      if (!result.success) {
+        alert(result.error);
+        // Revertir si falla
+        setInventory(initialData);
+      }
+    });
   };
+
+  const canModifyStock = user?.role === "ADMIN";
+
+  const filteredInventory = user?.role === "MANAGER" && user.storeId
+    ? inventory.filter(item => item.storeId === user.storeId)
+    : inventory;
 
   return (
     <div className="overflow-x-auto bg-bt-surface rounded-lg border border-gray-800">
@@ -48,7 +74,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
           </tr>
         </thead>
         <tbody className="text-bt-light">
-          {inventory.map((item) => (
+          {filteredInventory.map((item) => (
             <tr key={item.id} className="border-b border-gray-900 hover:bg-gray-800/50 transition-colors">
               <td className="p-4">
                 <div className="font-bold text-white">{item.variant.product.name}</div>
@@ -62,18 +88,24 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
               </td>
               <td className="p-4 text-right">
                 <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => handleAdjust(item.id, -1)}
-                    className="px-3 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-                  >
-                    -1
-                  </button>
-                  <button
-                    onClick={() => handleAdjust(item.id, 1)}
-                    className="px-3 py-1 bg-bt-orange text-white rounded hover:bg-orange-600 transition-colors"
-                  >
-                    +1
-                  </button>
+                  {canModifyStock ? (
+                    <>
+                      <button
+                        onClick={() => handleAdjust(item.id, -1)}
+                        className="px-3 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+                      >
+                        -1
+                      </button>
+                      <button
+                        onClick={() => handleAdjust(item.id, 1)}
+                        className="px-3 py-1 bg-bt-orange text-white rounded hover:bg-orange-600 transition-colors"
+                      >
+                        +1
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-gray-500 text-sm">Solo lectura</span>
+                  )}
                 </div>
               </td>
             </tr>
