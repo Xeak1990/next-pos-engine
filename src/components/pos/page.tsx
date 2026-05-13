@@ -1,43 +1,54 @@
-"use client"; // Nota: Si vas a usar estados globales, mantenlo como client o cámbialo a Server Component según tu arquitectura
+"use client";
 
-import ProductListClient from "../../components/pos/ProductListClient";
-import CartPanel from "../../components/pos/CartPanel";
 import { useEffect, useState } from "react";
+import CartPanel from "./CartPanel";
+import ProductListClient, { PosProduct } from "./ProductListClient";
 
-export default function PosPage() {
-  const [products, setProducts] = useState([]);
+export default function PosPage({
+  initialStoreLocation,
+  initialStoreName,
+}: {
+  initialStoreLocation?: string | null;
+  initialStoreName?: string | null;
+}) {
+  const [products, setProducts] = useState<PosProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Simulando la carga de datos de la API (RF01, RF08)
   useEffect(() => {
     async function loadProducts() {
-      const res = await fetch('/api/products'); // [cite: 214]
-      const data = await res.json();
-      setProducts(data);
+      setIsLoading(true);
+
+      try {
+        const response = await fetch("/api/products");
+        const data = await response.json();
+        setProducts(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error cargando productos POS:", error);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
+
     loadProducts();
   }, []);
 
   return (
-    /** * RNF-FE01: Interfaz responsiva y bloqueada a la altura de la pantalla
-     * Esto asegura que el CartPanel no crezca infinitamente.
-     */
-    <main className="h-screen w-full bg-[#0F0F0F] grid grid-cols-12 overflow-hidden">
-      
-      {/* SECCIÓN CATÁLOGO (Columna Izquierda - Mockup 6) */}
-      <section className="col-span-8 h-full overflow-y-auto custom-scrollbar p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* CORRECCIÓN ERROR 2741: Pasamos los productos requeridos */}
-          <ProductListClient products={products} />
-        </div>
-      </section>
+    <main className="min-h-[calc(100vh-88px)] bg-[#0F0F0F] px-4 py-4 text-white lg:px-6">
+      <div className="mx-auto grid max-w-[1600px] gap-6 xl:grid-cols-[1.45fr_0.78fr]">
+        <section className="min-w-0">
+          <ProductListClient
+            products={products}
+            isLoading={isLoading}
+            initialStoreLocation={initialStoreLocation}
+            initialStoreName={initialStoreName}
+          />
+        </section>
 
-      {/* SECCIÓN CARRITO (Columna Derecha - Mockup 7) 
-          El 'h-full' aquí es vital para que el CartPanel sepa dónde está el fondo.
-      */}
-      <aside className="col-span-4 h-full border-l border-[#333333] bg-[#1A1A1A]">
-        <CartPanel />
-      </aside>
-
+        <aside className="min-w-0">
+          <CartPanel storeLocation={initialStoreLocation ?? initialStoreName ?? "Operacion Global"} />
+        </aside>
+      </div>
     </main>
   );
 }

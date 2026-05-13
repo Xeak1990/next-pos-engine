@@ -53,7 +53,7 @@ export default function TicketModal({ isOpen, onClose, orderData }: TicketModalP
         {/* Acción de impresión nativa de Fedora/Linux */}
         <button 
           onClick={() => window.print()}
-          className="w-full mt-4 py-4 bg-[#E8621A] text-white font-bebas text-xl tracking-[0.2em] rounded-[12px] hover:bg-[#FF7A2F] transition-all shadow-lg active:scale-95"
+          className="bt-button-primary mt-4 w-full px-6 py-4 text-xs"
         >
           IMPRIMIR TICKET
         </button>

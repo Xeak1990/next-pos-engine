@@ -4,10 +4,6 @@ import { useState } from "react";
 import { formatCurrency } from "../../lib/utils";
 import { useCart } from "../../lib/CartContext";
 
-/**
- * RF01: Interfaz estricta basada en el Diccionario de Datos[cite: 228, 379].
- * Se eliminan los tipos 'any' para garantizar la integridad del sistema.
- */
 export interface PosProduct {
   id: string;
   name: string;
@@ -16,191 +12,238 @@ export interface PosProduct {
   size: string;
   price: string;
   stock: number;
-  storeName: string; // En el mapeo del servidor, este campo debe recibir 'item.store.location'
+  storeName: string;
+}
+
+function normalizeString(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 export default function ProductListClient({
   products,
+  isLoading,
+  initialStoreLocation,
+  initialStoreName,
 }: {
   products: PosProduct[];
+  isLoading?: boolean;
+  initialStoreLocation?: string | null;
+  initialStoreName?: string | null;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-
-  /** * Sincronización con DB: El valor inicial debe coincidir exactamente
-   * con la columna 'location' de tu tabla Store.
-   */
-  const [selectedStore, setSelectedStore] = useState(
-    "Plaza Americas, Xalapa, Ver.",
-  );
-
+  const [selectedStore, setSelectedStore] = useState(initialStoreLocation ?? "");
   const { addItem } = useCart();
 
-  const normalizeString = (value: string) =>
-    value
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+  const storeOptions = Array.from(
+    new Set(products.map((product) => product.storeName).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right, "es"));
 
-
-  // Categorías oficiales según Mockup 6 [cite: 306]
-  const categories = [
+  const categoryOptions = [
     "TODOS",
-    "RUNNING",
-    "CASUAL",
-    "SPORT",
-    "SKATE",
-    "LIFESTYLE",
+    ...Array.from(
+      new Set(products.map((product) => product.category).filter(Boolean)),
+    ).sort((left, right) => left.localeCompare(right, "es")),
   ];
 
-  const normalizedSelectedStore = normalizeString(selectedStore);
+  const activeStore =
+    storeOptions.includes(selectedStore)
+      ? selectedStore
+      : initialStoreLocation && storeOptions.includes(initialStoreLocation)
+        ? initialStoreLocation
+        : storeOptions[0] || "";
+
+  const selectedStoreNormalized = normalizeString(activeStore);
   const selectedCategoryNormalized = normalizeString(selectedCategory);
+  const normalizedSearch = normalizeString(searchTerm);
 
-  console.log("ProductListClient products:", products, "selectedStore:", selectedStore, "normalizedStore:", normalizedSelectedStore);
+  const filteredProducts = products.filter((product) => {
+    const matchesStore =
+      !selectedStoreNormalized ||
+      normalizeString(product.storeName || "") === selectedStoreNormalized;
 
-  /**
-   * RF08: Lógica de filtrado omnicanal por sucursal y categoría[cite: 228].
-   * Se usa normalización con trim() y toLowerCase() en ambas partes.
-   */
-
-  const filteredProducts = products.filter((p: PosProduct) => {
-    const storeName = normalizeString(p.storeName || "");
-    const matchesStore = storeName === normalizedSelectedStore;
-
-    const category = normalizeString(p.category || "");
     const matchesCategory =
       selectedCategory === "TODOS" ||
-      category === selectedCategoryNormalized;
+      normalizeString(product.category || "") === selectedCategoryNormalized;
 
-    const normalizedSearch = normalizeString(searchTerm);
     const matchesSearch =
-      normalizedSearch === "" ||
-      normalizeString(p.name).includes(normalizedSearch) ||
-      normalizeString(p.size).includes(normalizedSearch);
+      !normalizedSearch ||
+      normalizeString(product.name).includes(normalizedSearch) ||
+      normalizeString(product.brand).includes(normalizedSearch) ||
+      normalizeString(product.size).includes(normalizedSearch);
 
     return matchesStore && matchesCategory && matchesSearch;
   });
+
   return (
     <div className="space-y-6">
-      {/* Selector de Sucursal - Estética Mockup 6 [cite: 306, 434] */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#1A1A1A] p-6 rounded-[12px] border border-[#333333]">
-        <div className="flex items-center gap-4">
-          <div className="w-3 h-3 bg-[#E8621A] rounded-full animate-pulse"></div>
-          <span className="text-2xl font-bebas tracking-widest text-white uppercase">
-            TERMINAL POS
-          </span>
-          <select
-            value={selectedStore}
-            onChange={(e) => setSelectedStore(e.target.value)}
-            className="bg-[#0F0F0F] text-[#E8621A] font-bold py-2 px-4 rounded-[8px] border border-[#333333] outline-none uppercase text-xs cursor-pointer"
-          >
-            {/* Los valores deben ser las ubicaciones exactas de Prisma Studio  */}
-            <option value="Plaza Americas, Xalapa, Ver.">PLAZA AMÉRICAS</option>
-            <option value="Centro, Xalapa, Ver.">CENTRO XALAPA</option>
-            <option value="Plaza Crystal, Xalapa, Ver.">PLAZA CRYSTAL</option>
-          </select>
-        </div>
+      <section className="bt-panel overflow-hidden">
+        <div className="border-b border-[#333333] bg-[#1A3A5F]/20 px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-[#94A3B8]">Punto de Venta</p>
+              <h1 className="mt-3 text-4xl text-white">Terminal POS</h1>
+              <p className="mt-2 text-sm text-[#D1D5DB]">
+                Grid de productos con disponibilidad inmediata y control de sucursal activo.
+              </p>
+            </div>
 
-        {/* Buscador con validación en tiempo real [cite: 168] */}
-        <div className="relative w-full md:w-96">
-          <input
-            type="text"
-            placeholder="BUSCAR MODELO O TALLA..."
-            className="w-full bg-[#0F0F0F] border border-[#333333] p-3 pl-10 rounded-[8px] text-white font-sans text-[10px] uppercase tracking-widest focus:border-[#E8621A] outline-none transition-all"
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <span className="absolute left-3 top-3 opacity-30 text-xs">🔍</span>
-        </div>
-      </div>
-
-      {/* Pestañas de Categoría con estilos de Guía de Estilo [cite: 434, 436] */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-8 py-3 rounded-[8px] font-bebas text-sm tracking-widest transition-all ${
-              selectedCategory === cat
-                ? "bg-[#E8621A] text-white shadow-[0_0_24px_rgba(232,98,26,0.3)]"
-                : "bg-[#1A1A1A] text-gray-500 hover:text-white border border-[#333333]"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Grid de Productos - Tarjetas Normalizadas (3FN) [cite: 186, 456] */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((product: PosProduct) => (
-            <div
-              key={product.id}
-              className={`p-8 bg-[#1A1A1A] border border-[#333333] rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.4)] flex flex-col justify-between transition-all hover:border-[#E8621A] ${
-                product.stock === 0 ? "opacity-50 grayscale" : ""
-              }`}
-            >
-              <div className="mb-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-3xl font-bebas text-white uppercase leading-none tracking-tight">
-                    {product.name}
-                  </h3>
-                  <span className="bg-[#0F0F0F] px-3 py-1 rounded-[4px] text-[10px] font-mono font-bold text-[#E8621A] border border-[#333333]">
-                    T- {product.size}
-                  </span>
-                </div>
-                <p className="text-2xl font-mono font-bold text-[#2ECC71]">
-                  {formatCurrency(product.price)}
-                </p>
-                {product.stock === 0 && (
-                  <span className="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-[#E74C3C] text-[10px] font-bold uppercase tracking-widest text-white">
-                    AGOTADO
-                  </span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[12px] border border-[#1A3A5F] bg-[#111111] px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Sucursal</p>
+                <select
+                  value={activeStore}
+                  onChange={(event) => setSelectedStore(event.target.value)}
+                  disabled={Boolean(initialStoreLocation)}
+                  className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm font-semibold text-[#E8621A] disabled:cursor-not-allowed disabled:text-[#D1D5DB]"
+                >
+                  {storeOptions.map((store) => (
+                    <option key={store} value={store} className="bg-[#1A1A1A] text-white">
+                      {store}
+                    </option>
+                  ))}
+                </select>
+                {initialStoreLocation && (
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#C9D8EA]">
+                    Sucursal bloqueada para {initialStoreName || "usuario operativo"}
+                  </p>
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t border-gray-900 pt-6">
-                {/* RF07: Alerta visual de stock crítico (<= 2 unidades) [cite: 228, 434] */}
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-widest ${
-                    product.stock <= 2 ? "text-[#E74C3C]" : "text-gray-500"
+              <label className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-3">
+                <span className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Busqueda</span>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar modelo, marca o talla"
+                  className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm text-white placeholder:text-[#6B7280]"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b border-[#333333] px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap gap-2">
+            {categoryOptions.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                className={
+                  selectedCategory === category
+                    ? "bt-button-primary px-4 py-2 text-xs"
+                    : "bt-button-ghost px-4 py-2 text-xs"
+                }
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6">
+          {isLoading ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-[12px] border border-[#333333] bg-[#141414] p-6 animate-pulse"
+                >
+                  <div className="h-5 w-2/3 rounded bg-white/10" />
+                  <div className="mt-3 h-4 w-1/3 rounded bg-white/10" />
+                  <div className="mt-8 h-10 w-full rounded bg-white/10" />
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length > 0 ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {filteredProducts.map((product) => (
+                <article
+                  key={product.id}
+                  className={`rounded-[12px] border bg-[#151515] p-6 transition-all hover:border-[#E8621A] hover:shadow-[0_14px_34px_rgba(0,0,0,0.22)] ${
+                    product.stock === 0 ? "border-[#333333] opacity-65" : "border-[#333333]"
                   }`}
                 >
-                  Stock: {product.stock} UDS
-                </span>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.22em] text-[#94A3B8]">
+                        {product.brand} / {product.category}
+                      </p>
+                      <h2 className="mt-3 text-3xl leading-none text-white">{product.name}</h2>
+                    </div>
+                    <span className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-3 py-1 font-mono text-xs font-semibold text-[#E8621A]">
+                      T-{product.size}
+                    </span>
+                  </div>
 
-                {product.stock > 0 && (
-                  <button
-                    onClick={() =>
-                      addItem(
-                        {
-                          variantId: product.id,
-                          name: product.name,
-                          size: product.size,
-                          price: Number(product.price),
-                          quantity: 1,
-                          stockAvailable: product.stock, // Pasamos el stock real para validación en CartContext
-                        },
-                        product.stock,
-                      )
-                    }
-                    className="bg-[#E8621A] text-white px-8 py-3 rounded-[8px] font-bebas text-lg tracking-widest hover:bg-[#FF7A2F] active:scale-[0.97] transition-all"
-                  >
-                    AGREGAR
-                  </button>
-                )}
-              </div>
+                  <div className="mt-6 flex items-center justify-between">
+                    <p className="font-mono text-2xl font-bold text-[#2ECC71]">
+                      {formatCurrency(product.price)}
+                    </p>
+                    {product.stock === 0 && (
+                      <span className="rounded-full border border-[#E8621A]/40 bg-[#E8621A]/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#E8621A]">
+                        Agotado
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-8 flex items-end justify-between gap-4 border-t border-[#2A2A2A] pt-5">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Stock</p>
+                      <p
+                        className={`mt-2 font-mono text-sm font-semibold ${
+                          product.stock <= 2 ? "text-[#E8621A]" : "text-white"
+                        }`}
+                      >
+                        {product.stock} uds
+                      </p>
+                    </div>
+
+                    {product.stock > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addItem(
+                            {
+                              variantId: product.id,
+                              name: product.name,
+                              size: product.size,
+                              price: Number(product.price),
+                              quantity: 1,
+                              stockAvailable: product.stock,
+                            },
+                            product.stock,
+                          )
+                        }
+                        className="bt-button-primary px-5 py-3 text-xs"
+                      >
+                        Agregar
+                      </button>
+                    ) : (
+                      <div className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-4 py-3 text-[11px] uppercase tracking-[0.22em] text-[#6B7280]">
+                        Sin stock
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
-          ))
-        ) : (
-          <div className="col-span-full py-20 text-center border border-dashed border-[#333333] rounded-[12px]">
-            <p className="text-gray-600 font-bebas text-xl tracking-widest uppercase">
-              No hay productos disponibles en esta sucursal
-            </p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="rounded-[12px] border border-dashed border-[#333333] bg-[#141414] px-6 py-16 text-center">
+              <p className="text-2xl text-white">No hay productos disponibles</p>
+              <p className="mt-3 text-sm text-[#9CA3AF]">
+                Ajusta la sucursal, categoria o termino de busqueda para continuar.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

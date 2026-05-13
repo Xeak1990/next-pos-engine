@@ -1,42 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { formatCurrency } from "../../lib/utils";
 import StockModal from "./StockModal";
-import { Product, Variant } from "../../types"; 
+import { Product, Variant } from "../../types";
+import { formatCurrency } from "../../lib/utils";
 
 export default function ProductCard({ product }: { product: Product }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const allInventory = product.variants.flatMap((v) => v.inventory);
+  const allInventory = product.variants.flatMap((variant) => variant.inventory);
 
   return (
     <>
-      <div className="bg-[#1A1A1A] border border-gray-800 p-8 flex flex-col h-full hover:border-[#E8621A] transition-colors">
+      <article className="bt-panel flex h-full flex-col p-8 transition-all hover:border-[#E8621A]">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-white uppercase tracking-tighter">{product.name}</h2>
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">{product.brand} / {product.category}</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-[#94A3B8]">
+            {product.brand} / {product.category}
+          </p>
+          <h2 className="mt-4 text-4xl leading-none text-white">{product.name}</h2>
         </div>
-        
-        <div className="flex-grow space-y-4">
+
+        <div className="flex-1 space-y-4">
           {product.variants.map((variant: Variant) => (
-            <div key={variant.id} className="flex justify-between items-center border-b border-gray-900 pb-2">
-              <span className="text-gray-400 text-sm font-bold uppercase">Talla {variant.size}</span>
-              <span className="text-white font-bold">{formatCurrency(variant.price)}</span>
+            <div
+              key={variant.id}
+              className="flex items-center justify-between border-b border-[#2A2A2A] pb-3"
+            >
+              <span className="text-sm uppercase tracking-[0.16em] text-[#D1D5DB]">
+                Talla {variant.size}
+              </span>
+              <span className="font-mono text-sm font-bold text-[#2ECC71]">
+                {formatCurrency(variant.price)}
+              </span>
             </div>
           ))}
         </div>
 
-        <button 
+        <button
+          type="button"
           onClick={() => setIsModalOpen(true)}
-          className="w-full mt-8 py-4 bg-white text-black font-bold uppercase text-xs tracking-widest hover:bg-[#E8621A] hover:text-white transition-all"
+          className="bt-button-primary mt-8 w-full px-5 py-4 text-xs"
         >
-          VER DISPONIBILIDAD
+          Ver Disponibilidad
         </button>
-      </div>
+      </article>
 
-      {/* El modal se renderiza aquí pero al ser fixed aparecerá sobre todo el layout */}
       {isModalOpen && (
-        <StockModal 
+        <StockModal
           productName={product.name}
           price={String(product.variants[0]?.price || 0)}
           inventory={allInventory}

@@ -10,53 +10,83 @@ interface PaymentModalProps {
   onCancel: () => void;
 }
 
-export default function PaymentModal({ isOpen, total, onConfirm, onCancel }: PaymentModalProps) {
+const paymentMethods = [
+  { key: "efectivo", label: "Efectivo" },
+  { key: "tarjeta", label: "Tarjeta" },
+  { key: "transferencia", label: "Transferencia" },
+];
+
+export default function PaymentModal({
+  isOpen,
+  total,
+  onConfirm,
+  onCancel,
+}: PaymentModalProps) {
   const [method, setMethod] = useState("efectivo");
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-[#1A1A1A] border border-[#333333] w-full max-w-md rounded-[20px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-        <button onClick={onCancel} className="text-gray-500 hover:text-white float-right">✕</button>
-        
-        <h2 className="text-3xl font-bebas text-white mb-8 tracking-widest">PROCESAR PAGO</h2>
-        
-        <div className="bg-[#0F0F0F] p-6 rounded-[12px] border border-[#333333] mb-8 text-center">
-          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">TOTAL A COBRAR</p>
-          <p className="text-4xl font-mono font-bold text-[#E8621A]">{formatCurrency(total)}</p>
-        </div>
-
-        <p className="text-[10px] text-gray-500 font-bold uppercase mb-4">MÉTODO DE PAGO</p>
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          {["efectivo", "tarjeta", "transferencia"].map((m) => (
-            <button
-              key={m}
-              onClick={() => setMethod(m)}
-              className={`py-4 rounded-[12px] border flex flex-col items-center gap-2 transition-all ${
-                method === m 
-                ? "border-[#E8621A] bg-[#E8621A]/10 text-white" 
-                : "border-[#333333] bg-[#0F0F0F] text-gray-500 hover:border-gray-600"
-              }`}
-            >
-              <span className="text-lg">{m === "efectivo" ? "💵" : m === "tarjeta" ? "💳" : "📱"}</span>
-              <span className="text-[9px] font-bold uppercase tracking-tighter">{m}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-3">
-          <button 
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="bt-panel w-full max-w-lg p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]">Cobro</p>
+            <h2 className="mt-3 text-4xl text-white">Procesar Pago</h2>
+          </div>
+          <button
+            type="button"
             onClick={onCancel}
-            className="flex-1 py-4 bg-transparent border border-[#333333] text-gray-500 rounded-[12px] font-bebas tracking-widest hover:bg-white/5"
+            className="border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-[0.16em] text-[#9CA3AF] hover:text-white"
           >
-            CANCELAR
+            Cerrar
           </button>
-          <button 
+        </div>
+
+        <div className="mt-8 rounded-[12px] border border-[#333333] bg-[#111111] p-6 text-center">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#94A3B8]">Total a cobrar</p>
+          <p className="mt-4 font-mono text-4xl font-bold text-[#E8621A]">
+            {formatCurrency(total)}
+          </p>
+        </div>
+
+        <div className="mt-8">
+          <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]">Metodo de pago</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {paymentMethods.map((paymentMethod) => {
+              const isActive = method === paymentMethod.key;
+
+              return (
+                <button
+                  key={paymentMethod.key}
+                  type="button"
+                  onClick={() => setMethod(paymentMethod.key)}
+                  className={
+                    isActive
+                      ? "bt-button-secondary flex flex-col items-center gap-2 px-4 py-4 text-xs"
+                      : "bt-button-ghost flex flex-col items-center gap-2 px-4 py-4 text-xs"
+                  }
+                >
+                  <span className="font-mono uppercase">{paymentMethod.key.slice(0, 3)}</span>
+                  <span>{paymentMethod.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <button type="button" onClick={onCancel} className="bt-button-ghost flex-1 px-5 py-4 text-xs">
+            Cancelar
+          </button>
+          <button
+            type="button"
             onClick={() => onConfirm(method)}
-            className="flex-1 py-4 bg-[#2ECC71] text-black rounded-[12px] font-bebas tracking-widest hover:bg-[#27ae60] transition-all"
+            className="bt-button-primary flex-1 px-5 py-4 text-xs"
           >
-            CONFIRMAR VENTA
+            Confirmar Venta
           </button>
         </div>
       </div>

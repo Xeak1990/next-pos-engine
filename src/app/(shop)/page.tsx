@@ -58,21 +58,21 @@ export default async function ShopPage() {
   }));
 
   return (
-    <main className="p-8 max-w-7xl mx-auto bg-bt-dark min-h-screen">
-      <header className="mb-12">
-        <h1 className="text-5xl font-bebas text-bt-orange mb-2 uppercase">
-          Catálogo Ben Tenison
-        </h1>
-        <p className="text-gray-400 font-sans">
-          Consulta la disponibilidad de tus tenis favoritos en nuestras sucursales. [cite: 126]
-        </p>
-      </header>
+    <main className="min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-10">
+          <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Catalogo</p>
+          <h1 className="mt-3 text-5xl text-white">Ben Tenison</h1>
+          <p className="mt-3 text-sm text-[#9CA3AF]">
+            Consulta disponibilidad y precios por variante en tiempo real.
+          </p>
+        </header>
 
-      {/* Grid responsivo según Guía de Estilos [cite: 432, 459] */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {serializedProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {serializedProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       </div>
     </main>
   );

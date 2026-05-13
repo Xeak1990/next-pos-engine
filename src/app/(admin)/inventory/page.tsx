@@ -1,8 +1,7 @@
-import { prisma } from "../../../lib/prisma";
 import InventoryTable from "../../../components/admin/InventoryTable";
+import { prisma } from "../../../lib/prisma";
 
 export default async function InventoryPage() {
-  // 1. Obtenemos los datos de la DB con las relaciones necesarias (RF03)
   const inventoryData = await prisma.inventory.findMany({
     include: {
       variant: {
@@ -15,22 +14,22 @@ export default async function InventoryPage() {
     orderBy: {
       variant: {
         product: {
-          name: 'asc'
-        }
-      }
-    }
+          name: "asc",
+        },
+      },
+    },
   });
 
-  // 2. Formateamos los datos para que coincidan con la interfaz de nuestro componente
-  // Esto asegura que el tipado de TypeScript sea exacto
   const serializedInventory = inventoryData.map((item) => ({
     id: item.id,
     quantity: item.quantity,
     storeId: item.storeId,
+    storeName: item.store.name,
+    storeLocation: item.store.location,
     variant: {
       size: item.variant.size,
       color: item.variant.color,
-      price: item.variant.price.toString(), // Convertimos Decimal a string para el cliente
+      price: item.variant.price.toString(),
       product: {
         name: item.variant.product.name,
       },
@@ -38,30 +37,33 @@ export default async function InventoryPage() {
   }));
 
   return (
-    <div className="p-8 bg-bt-dark min-h-screen text-white">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-4xl font-bebas text-bt-orange tracking-wider">
-            Gestión de Inventario
-          </h1>
-          <p className="text-gray-400 font-sans">
-            Control de existencias en tiempo real por sucursal y variante.
-          </p>
-        </div>
-        
-        <div className="bg-bt-navy p-4 rounded-lg border border-blue-900/30">
-          <span className="text-sm text-blue-200 block">Total de variantes</span>
-          <span className="text-2xl font-mono font-bold">{serializedInventory.length}</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Existencias</p>
+            <h1 className="mt-3 text-5xl text-white">Inventario</h1>
+            <p className="mt-3 max-w-2xl text-sm text-[#9CA3AF]">
+              Control de stock por sucursal con filtros visuales y lectura rapida por talla.
+            </p>
+          </div>
 
-      {/* 3. Renderizamos la tabla que creamos antes */}
-      <div className="mt-4">
+          <div className="bt-panel-blue px-5 py-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#C9D8EA]">Variantes activas</p>
+            <p className="mt-2 font-mono text-2xl font-bold text-white">
+              {serializedInventory.length}
+            </p>
+          </div>
+        </header>
+
         {serializedInventory.length > 0 ? (
           <InventoryTable initialData={serializedInventory} />
         ) : (
-          <div className="bg-bt-surface p-12 text-center rounded-lg border border-dashed border-gray-800">
-            <p className="text-gray-500">No hay productos en el inventario. Ejecuta el seed o agrega productos.</p>
+          <div className="bt-panel px-6 py-16 text-center">
+            <p className="text-3xl text-white">No hay productos en inventario</p>
+            <p className="mt-3 text-sm text-[#9CA3AF]">
+              Ejecuta el seed o agrega variantes para poblar esta vista.
+            </p>
           </div>
         )}
       </div>

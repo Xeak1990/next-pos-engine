@@ -31,7 +31,6 @@ export default function UsersAdminClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-
   const [formValues, setFormValues] = useState({
     name: "",
     email: "",
@@ -43,8 +42,10 @@ export default function UsersAdminClient({
 
   const mustAssignStore = useMemo(
     () => formValues.role === "MANAGER" || formValues.role === "CASHIER",
-    [formValues.role]
+    [formValues.role],
   );
+
+  const filteredUsers = showInactive ? users : users.filter((user) => user.isActive);
 
   const clearForm = () => {
     setFormValues({
@@ -86,7 +87,6 @@ export default function UsersAdminClient({
       const data = await response.json();
       if (!response.ok) {
         setErrorMessage(data.error || "No se pudo crear el usuario.");
-        setIsSubmitting(false);
         return;
       }
 
@@ -118,7 +118,7 @@ export default function UsersAdminClient({
       }
 
       setUsers((current) =>
-        current.map((user) => (user.id === id ? { ...user, isActive: data.isActive } : user))
+        current.map((user) => (user.id === id ? { ...user, isActive: data.isActive } : user)),
       );
     } catch (error) {
       console.error(error);
@@ -126,99 +126,127 @@ export default function UsersAdminClient({
     }
   };
 
-  const filteredUsers = showInactive ? users : users.filter(user => user.isActive);
-
   return (
-    <div className="max-w-[1440px] mx-auto py-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+    <div className="mx-auto max-w-7xl">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-4xl font-bebas uppercase tracking-widest text-white">Gestión de Usuarios</h1>
-          <p className="text-gray-400 mt-2">Administra roles, sucursales y estado de los usuarios del sistema.</p>
+          <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Administracion</p>
+          <h1 className="mt-3 text-5xl text-white">Usuarios</h1>
+          <p className="mt-3 max-w-2xl text-sm text-[#9CA3AF]">
+            Roles, sucursales y estado operativo de cada usuario del sistema.
+          </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-full bg-[#E8621A] px-6 py-3 text-sm font-bold uppercase tracking-widest transition hover:brightness-110"
-        >
-          Nuevo Usuario
-        </button>
-      </div>
-
-      <div className="overflow-x-auto rounded-3xl border border-gray-800 bg-[#1A1A1A] p-4 shadow-xl shadow-black/40">
-        <div className="mb-4">
-          <label className="flex items-center gap-2 text-gray-300">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-3 rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-4 py-3 text-sm text-[#D1D5DB]">
             <input
               type="checkbox"
               checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded border-gray-600 bg-gray-800 text-[#E8621A] focus:ring-[#E8621A]"
+              onChange={(event) => setShowInactive(event.target.checked)}
+              className="h-4 w-4"
             />
-            Mostrar usuarios inactivos
+            Mostrar inactivos
           </label>
+
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="bt-button-primary px-6 py-3 text-xs"
+          >
+            Nuevo Usuario
+          </button>
         </div>
-        <table className="min-w-full border-collapse text-left text-sm text-gray-200">
-          <thead>
-            <tr>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Nombre</th>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Email</th>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Rol</th>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Sucursal</th>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Estado</th>
-              <th className="border-b border-gray-700 px-4 py-3 uppercase text-xs tracking-[0.25em] text-gray-400">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className={`border-b border-gray-800 hover:bg-white/5 transition-colors even:bg-white/5 ${!user.isActive ? 'opacity-50' : ''}`}>
-                <td className="px-4 py-4 text-white font-medium">{user.name}</td>
-                <td className="px-4 py-4 text-gray-300">{user.email}</td>
-                <td className="px-4 py-4 text-[#E8621A] font-bold">{user.role}</td>
-                <td className="px-4 py-4 text-gray-300">
-                  {user.store ? `${user.store.name} (${user.store.location})` : "-"}
-                </td>
-                <td className="px-4 py-4">
-                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${user.isActive ? "bg-green-500/15 text-green-300" : "bg-red-500/10 text-red-300"}`}>
-                    {user.isActive ? "Activo" : "DESACTIVADO"}
-                  </span>
-                </td>
-                <td className="px-4 py-4 space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => handleUserToggle(user.id, user.isActive)}
-                    className={`rounded px-3 py-1 text-xs font-bold uppercase transition ${user.isActive ? "bg-red-500/15 text-red-300 hover:bg-red-500/25" : "bg-green-500/15 text-green-300 hover:bg-green-500/25"}`}
-                  >
-                    {user.isActive ? "DESACTIVAR" : "REACTIVAR"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredUsers.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  No hay usuarios registrados.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
       </div>
 
+      <section className="bt-table-shell">
+        <div className="custom-scrollbar overflow-x-auto">
+          <table className="bt-table min-w-[980px]">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Sucursal</th>
+                <th>Estado</th>
+                <th className="text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className={user.isActive ? "" : "opacity-70"}>
+                  <td>
+                    <p className="font-semibold text-white">{user.name}</p>
+                  </td>
+                  <td className="font-mono text-sm text-[#D1D5DB]">{user.email}</td>
+                  <td>
+                    <span className="rounded-full border border-[#E8621A]/30 bg-[#E8621A]/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#E8621A]">
+                      {user.role}
+                    </span>
+                  </td>
+                  <td>
+                    {user.store ? (
+                      <div>
+                        <p className="text-sm text-white">{user.store.name}</p>
+                        <p className="mt-1 text-xs text-[#94A3B8]">{user.store.location}</p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-[#94A3B8]">Sin asignacion</span>
+                    )}
+                  </td>
+                  <td>
+                    <span
+                      className={`bt-status-badge ${
+                        user.isActive ? "bt-status-active" : "bt-status-inactive"
+                      }`}
+                    >
+                      {user.isActive ? "ACTIVO" : "INACTIVO"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleUserToggle(user.id, user.isActive)}
+                        className={user.isActive ? "bt-button-ghost px-4 py-2 text-xs" : "bt-button-primary px-4 py-2 text-xs"}
+                      >
+                        {user.isActive ? "Desactivar" : "Reactivar"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-14 text-center text-sm text-[#9CA3AF]">
+                    No hay usuarios para la vista actual.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
-          <div className="w-full max-w-2xl rounded-3xl border border-gray-800 bg-[#1A1A1A] p-8 shadow-2xl shadow-black/60">
-            <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-8 backdrop-blur-sm">
+          <div className="bt-panel w-full max-w-3xl p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-3xl font-bebas uppercase tracking-widest text-white">Nuevo Usuario</h2>
-                <p className="text-gray-400 mt-1">Registra un nuevo usuario y asigna rol + sucursal.</p>
+                <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]">Alta de usuario</p>
+                <h2 className="mt-3 text-4xl text-white">Nuevo Usuario</h2>
+                <p className="mt-2 text-sm text-[#9CA3AF]">
+                  Completa el perfil operativo y asigna el acceso correspondiente.
+                </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => {
                   setIsModalOpen(false);
                   clearForm();
                 }}
-                className="rounded-full border border-gray-700 bg-transparent px-4 py-2 text-sm text-gray-300 transition hover:border-gray-500 hover:text-white"
+                className="bt-button-ghost px-4 py-2 text-xs"
               >
                 Cerrar
               </button>
@@ -226,30 +254,30 @@ export default function UsersAdminClient({
 
             <form className="space-y-5" onSubmit={handleCreateUser}>
               {errorMessage && (
-                <div className="rounded-2xl border border-red-600 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                <div className="rounded-[12px] border border-[#E8621A]/30 bg-[#E8621A]/10 px-4 py-3 text-sm text-[#FED7AA]">
                   {errorMessage}
                 </div>
               )}
 
               <div className="grid gap-5 md:grid-cols-2">
-                <label className="space-y-2 text-sm text-gray-300">
+                <label className="space-y-2 text-sm text-[#D1D5DB]">
                   <span>Nombre</span>
                   <input
                     value={formValues.name}
                     onChange={(event) => setFormValues({ ...formValues, name: event.target.value })}
-                    className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                    className="bt-input px-4 py-3"
                     placeholder="Nombre completo"
                     required
                   />
                 </label>
 
-                <label className="space-y-2 text-sm text-gray-300">
+                <label className="space-y-2 text-sm text-[#D1D5DB]">
                   <span>Email</span>
                   <input
                     type="email"
                     value={formValues.email}
                     onChange={(event) => setFormValues({ ...formValues, email: event.target.value })}
-                    className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                    className="bt-input px-4 py-3"
                     placeholder="usuario@correo.com"
                     required
                   />
@@ -257,27 +285,29 @@ export default function UsersAdminClient({
               </div>
 
               <div className="grid gap-5 md:grid-cols-2">
-                <label className="space-y-2 text-sm text-gray-300">
-                  <span>Contraseña</span>
+                <label className="space-y-2 text-sm text-[#D1D5DB]">
+                  <span>Contrasena</span>
                   <input
                     type="password"
                     value={formValues.password}
-                    onChange={(event) => setFormValues({ ...formValues, password: event.target.value })}
-                    className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                    onChange={(event) =>
+                      setFormValues({ ...formValues, password: event.target.value })
+                    }
+                    className="bt-input px-4 py-3"
                     placeholder="********"
                     required
                   />
                 </label>
 
-                <label className="space-y-2 text-sm text-gray-300">
+                <label className="space-y-2 text-sm text-[#D1D5DB]">
                   <span>Rol</span>
                   <select
                     value={formValues.role}
                     onChange={(event) => setFormValues({ ...formValues, role: event.target.value })}
-                    className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                    className="bt-input px-4 py-3"
                   >
                     {roleOptions.map((option) => (
-                      <option key={option} value={option}>
+                      <option key={option} value={option} className="bg-[#1A1A1A] text-white">
                         {option}
                       </option>
                     ))}
@@ -286,53 +316,61 @@ export default function UsersAdminClient({
               </div>
 
               {mustAssignStore && (
-                <label className="space-y-2 text-sm text-gray-300">
+                <label className="space-y-2 text-sm text-[#D1D5DB]">
                   <span>Sucursal</span>
                   <select
                     value={formValues.storeId}
-                    onChange={(event) => setFormValues({ ...formValues, storeId: event.target.value })}
-                    className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                    onChange={(event) =>
+                      setFormValues({ ...formValues, storeId: event.target.value })
+                    }
+                    className="bt-input px-4 py-3"
                     required
                   >
-                    <option value="">Selecciona una sucursal</option>
+                    <option value="" className="bg-[#1A1A1A] text-white">
+                      Selecciona una sucursal
+                    </option>
                     {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name} – {store.location}
+                      <option key={store.id} value={store.id} className="bg-[#1A1A1A] text-white">
+                        {store.name} - {store.location}
                       </option>
                     ))}
                   </select>
                 </label>
               )}
 
-              <label className="space-y-2 text-sm text-gray-300">
+              <label className="space-y-2 text-sm text-[#D1D5DB]">
                 <span>Estado</span>
                 <select
                   value={formValues.isActive ? "ACTIVO" : "INACTIVO"}
                   onChange={(event) =>
                     setFormValues({ ...formValues, isActive: event.target.value === "ACTIVO" })
                   }
-                  className="w-full rounded-2xl border border-gray-700 bg-[#0F0F0F] px-4 py-3 text-white outline-none focus:border-[#E8621A]"
+                  className="bt-input px-4 py-3"
                 >
-                  <option value="ACTIVO">ACTIVO</option>
-                  <option value="INACTIVO">INACTIVO</option>
+                  <option value="ACTIVO" className="bg-[#1A1A1A] text-white">
+                    ACTIVO
+                  </option>
+                  <option value="INACTIVO" className="bg-[#1A1A1A] text-white">
+                    INACTIVO
+                  </option>
                 </select>
               </label>
 
-              <div className="flex flex-col gap-4 pt-4 md:flex-row md:justify-end">
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setIsModalOpen(false);
                     clearForm();
                   }}
-                  className="rounded-full border border-gray-700 bg-transparent px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white transition hover:border-gray-500"
+                  className="bt-button-ghost px-6 py-3 text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-full bg-[#E8621A] px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="bt-button-primary px-6 py-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? "Guardando..." : "Crear Usuario"}
                 </button>
