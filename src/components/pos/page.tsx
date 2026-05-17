@@ -34,9 +34,9 @@ export default function PosPage({
   }, []);
 
   return (
-    <main className="min-h-[calc(100vh-88px)] bg-[#0F0F0F] px-4 py-4 text-white lg:px-6">
-      <div className="mx-auto grid max-w-[1600px] gap-6 xl:grid-cols-[1.45fr_0.78fr]">
-        <section className="min-w-0">
+    <main className="bg-[#0F0F0F] px-4 py-4 text-white lg:px-6">
+      <div className="grid gap-6 lg:h-[calc(100vh-68px)] lg:grid-cols-[70%_30%]">
+        <section className="min-w-0 lg:h-full">
           <ProductListClient
             products={products}
             isLoading={isLoading}
@@ -45,7 +45,7 @@ export default function PosPage({
           />
         </section>
 
-        <aside className="min-w-0">
+        <aside className="min-w-0 lg:h-full">
           <CartPanel storeLocation={initialStoreLocation ?? initialStoreName ?? "Operacion Global"} />
         </aside>
       </div>

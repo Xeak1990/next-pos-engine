@@ -11,6 +11,7 @@ const demoUsers = [
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,31 +57,26 @@ export default function LoginScreen() {
     <main className="bt-grid-glow relative min-h-screen overflow-hidden px-4 py-8 text-white sm:px-6 lg:px-10">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,15,15,0.2),rgba(15,15,15,0.92))]" />
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center">
-        <div className="grid w-full gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="bt-panel-blue relative overflow-hidden p-8 sm:p-10 lg:p-12">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#E8621A] to-transparent opacity-70" />
+      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col items-center justify-between">
+        <div className="flex w-full flex-1 flex-col items-center pt-6">
+          <header className="mb-8 text-center sm:mb-10">
+            <h1 className="text-5xl leading-none text-white sm:text-6xl">
+              BEN <span className="text-[#E8621A]">TENISON</span>
+            </h1>
+            <p className="mt-4 text-base tracking-[0.18em] text-[#C9D8EA] sm:text-lg">
+              Sistema de gestion omnical
+            </p>
+          </header>
 
-            <div className="inline-flex items-center gap-3 rounded-full border border-[#1A3A5F] bg-[#1A3A5F]/25 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#C9D8EA]">
-              <span className="h-2 w-2 rounded-full bg-[#2ECC71]" />
-              Sistema Operativo Ben Tenison
-            </div>
-
-            <div className="mt-8">
-              <p className="text-sm uppercase tracking-[0.38em] text-[#E8621A]">Acceso Centralizado</p>
-              <h1 className="mt-5 text-6xl leading-none text-white sm:text-7xl">
-                BEN <span className="text-[#E8621A]">TENISON</span>
-              </h1>
-            </div>
-          </section>
-
-          <section className="bt-panel relative overflow-hidden p-8 sm:p-10 lg:p-12">
+          <section className="bt-panel relative w-full max-w-xl overflow-hidden p-8 sm:p-10">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#1A3A5F] via-[#E8621A] to-[#1A3A5F]" />
 
             <div className="mb-8 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.36em] text-[#94A3B8]">Acceso Seguro</p>
                 <h2 className="mt-3 text-[28px] leading-none text-white">Iniciar Sesion</h2>
+                <p className="mt-3 text-sm text-[#9CA3AF]">
+                  Ingresa tus credenciales para acceder al sistema.
+                </p>
               </div>
               <span className="rounded-full border border-[#1A3A5F] bg-[#1A3A5F]/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D7E6F5]">
                 Login
@@ -112,14 +108,61 @@ export default function LoginScreen() {
                 <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#D1D5DB]">
                   Contrasena
                 </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="********"
-                  className="bt-input px-4 py-3"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="********"
+                    className="bt-input px-4 py-3 pr-12"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                    className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-[#9CA3AF] transition hover:text-white"
+                  >
+                    {showPassword ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-5 w-5"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9.88 5.09A9.77 9.77 0 0112 4.8c4.32 0 8.02 2.72 9.5 6.56a10.52 10.52 0 01-2.38 3.6M6.61 6.6C4.56 7.82 2.96 9.76 2.5 11.36A10.52 10.52 0 007.1 16.9"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        className="h-5 w-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12z"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </label>
 
               <div className="flex flex-col gap-3 text-sm text-[#D1D5DB] sm:flex-row sm:items-center sm:justify-between">
@@ -180,6 +223,10 @@ export default function LoginScreen() {
             </div>
           </section>
         </div>
+
+        <footer className="mt-8 pb-2 text-center text-sm text-[#94A3B8]">
+          Ben Tenison &copy; 2026 - ISC Programacion Web - ITSX
+        </footer>
       </div>
     </main>
   );

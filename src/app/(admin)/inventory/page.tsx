@@ -37,12 +37,12 @@ export default async function InventoryPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen bg-[#0F0F0F] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="space-y-6">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Existencias</p>
-            <h1 className="mt-3 text-5xl text-white">Inventario</h1>
+            <h1 className="mt-3 text-5xl tracking-wider text-white">Inventario</h1>
             <p className="mt-3 max-w-2xl text-sm text-[#9CA3AF]">
               Control de stock por sucursal con filtros visuales y lectura rapida por talla.
             </p>

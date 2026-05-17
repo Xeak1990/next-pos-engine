@@ -127,11 +127,11 @@ export default function UsersAdminClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="w-full">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Administracion</p>
-          <h1 className="mt-3 text-5xl text-white">Usuarios</h1>
+          <h1 className="mt-3 text-5xl tracking-wider text-white">Usuarios</h1>
           <p className="mt-3 max-w-2xl text-sm text-[#9CA3AF]">
             Roles, sucursales y estado operativo de cada usuario del sistema.
           </p>
@@ -153,7 +153,7 @@ export default function UsersAdminClient({
             onClick={() => setIsModalOpen(true)}
             className="bt-button-primary px-6 py-3 text-xs"
           >
-            Nuevo Usuario
+            + Nuevo Usuario
           </button>
         </div>
       </div>

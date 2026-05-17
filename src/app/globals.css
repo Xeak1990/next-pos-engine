@@ -1,22 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
 
+/* De vuelta a las directivas estándar que Next.js sí puede compilar */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bt-dark: #0F0F0F;
-  --bt-surface: #1A1A1A;
+  --bt-dark: #0f0f0f;
+  --bt-surface: #1a1a1a;
   --bt-surface-hover: #242424;
   --bt-border: #333333;
-  --bt-orange: #E8621A;
+  --bt-orange: #e8621a;
   --bt-orange-glow: rgba(232, 98, 26, 0.24);
-  --bt-blue: #1A3A5F;
+  --bt-blue: #1a3a5f;
   --bt-blue-soft: rgba(26, 58, 95, 0.24);
-  --bt-success: #2ECC71;
-  --bt-danger: #E8621A;
-  --bt-text: #F5F5F5;
-  --bt-muted: #9CA3AF;
+  --bt-success: #2ecc71;
+  --bt-danger: #e8621a;
+  --bt-text: #f5f5f5;
+  --bt-muted: #9ca3af;
 }
 
 @layer base {
@@ -32,21 +33,37 @@
     min-height: 100vh;
     background-color: var(--bt-dark);
     color: var(--bt-text);
-    font-family: 'DM Sans', sans-serif;
+    font-family: "DM Sans", sans-serif;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* REGLA LIMPIA Y DIRECTA PARA ELIMINAR EL AZUL SINFONÍA DE LOS LINKS */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
   }
 
   h1,
   h2,
   h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    letter-spacing: 0.08em;
+    font-family: "Bebas Neue", sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   button {
-    transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease,
-      color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition:
+      transform 200ms ease,
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease,
+      box-shadow 200ms ease,
+      opacity 200ms ease;
   }
 
   button:not(:disabled):active {
@@ -60,12 +77,15 @@
     border: 1px solid var(--bt-border);
     background: var(--bt-surface-hover);
     color: var(--bt-text);
-    transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    transition:
+      border-color 140ms ease,
+      box-shadow 140ms ease,
+      background-color 140ms ease;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: #6B7280;
+    color: #6b7280;
   }
 
   input:focus,
@@ -77,15 +97,15 @@
   }
 
   .font-bebas {
-    font-family: 'Bebas Neue', sans-serif;
+    font-family: "Bebas Neue", sans-serif;
   }
 
   .font-sans {
-    font-family: 'DM Sans', sans-serif;
+    font-family: "DM Sans", sans-serif;
   }
 
   .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
   }
 }
 
@@ -119,39 +139,60 @@
   }
 
   .bt-panel {
-    border: 1px solid var(--bt-border);
-    border-radius: 12px;
-    background: var(--bt-surface);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.5rem !important;
+    background: rgba(16, 16, 16, 0.92) !important;
+    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.30);
+    backdrop-filter: blur(8px);
   }
 
   .bt-panel-blue {
     border: 1px solid rgba(26, 58, 95, 0.72);
     border-radius: 12px;
-    background: linear-gradient(180deg, rgba(26, 58, 95, 0.28), rgba(15, 15, 15, 0.88));
+    background: linear-gradient(
+      180deg,
+      rgba(26, 58, 95, 0.28),
+      rgba(15, 15, 15, 0.88)
+    );
   }
 
+  /* SISTEMA DE BOTONES COMPORTAMIENTO MOCKUP (ALTURA OPTIMIZADA CON DISPLAY INTEGRADO) */
   .bt-button-primary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem !important;
+    padding: 0 0.85rem !important;
+    font-size: 0.72rem !important;
+    border-radius: 0.5rem !important;
     border: 1px solid transparent;
     background: var(--bt-orange);
-    color: #FFFFFF;
+    color: #ffffff !important;
+    text-decoration: none !important;
     font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    line-height: 1 !important;
     box-shadow: 0 8px 24px rgba(232, 98, 26, 0.2);
   }
 
   .bt-button-primary:hover {
-    background: #F07330;
+    background: #f07330;
   }
 
   .bt-button-secondary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem !important;
+    padding: 0 1.25rem !important;
     border: 1px solid rgba(26, 58, 95, 0.9);
     background: rgba(26, 58, 95, 0.2);
-    color: #FFFFFF;
+    color: #ffffff !important;
+    text-decoration: none !important;
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    line-height: 1 !important;
   }
 
   .bt-button-secondary:hover {
@@ -159,16 +200,22 @@
   }
 
   .bt-button-ghost {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--bt-border);
     background: transparent;
-    color: #D1D5DB;
+    color: #d1d5db !important;
+    text-decoration: none !important;
     font-weight: 600;
     letter-spacing: 0.08em;
+    padding: 0.85rem 1.5rem !important;
+    line-height: 1 !important;
   }
 
   .bt-button-ghost:hover {
     background: rgba(255, 255, 255, 0.04);
-    color: #FFFFFF;
+    color: #ffffff !important;
   }
 
   .bt-input {
@@ -202,13 +249,13 @@
     font-weight: 700;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #CBD5E1;
+    color: #cbd5e1;
   }
 
   .bt-table td {
     padding: 1rem 1.25rem;
     font-size: 0.92rem;
-    color: #E5E7EB;
+    color: #e5e7eb;
   }
 
   .bt-table tbody tr {
@@ -223,12 +270,29 @@
   .bt-grid-glow {
     background-color: var(--bt-dark);
     background-image:
-      radial-gradient(circle at 12% 16%, rgba(232, 98, 26, 0.18), transparent 0 24%),
-      radial-gradient(circle at 88% 12%, rgba(26, 58, 95, 0.28), transparent 0 26%),
-      radial-gradient(circle at 50% 100%, rgba(232, 98, 26, 0.08), transparent 0 32%),
+      radial-gradient(
+        circle at 12% 16%,
+        rgba(232, 98, 26, 0.18),
+        transparent 0 24%
+      ),
+      radial-gradient(
+        circle at 88% 12%,
+        rgba(26, 58, 95, 0.28),
+        transparent 0 26%
+      ),
+      radial-gradient(
+        circle at 50% 100%,
+        rgba(232, 98, 26, 0.08),
+        transparent 0 32%
+      ),
       linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: auto, auto, auto, 32px 32px, 32px 32px;
+    background-size:
+      auto,
+      auto,
+      auto,
+      32px 32px,
+      32px 32px;
   }
 
   .bt-status-badge {
@@ -260,7 +324,7 @@
 
   .bt-status-inactive {
     background: rgba(255, 255, 255, 0.06);
-    color: #D1D5DB;
+    color: #d1d5db;
   }
 
   .custom-scrollbar {
@@ -285,7 +349,7 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #4B5563;
+    background: #4b5563;
     background-clip: padding-box;
   }
 }

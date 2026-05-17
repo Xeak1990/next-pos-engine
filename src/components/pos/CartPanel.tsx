@@ -33,10 +33,11 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [lastOrder, setLastOrder] = useState<OrderSummary | null>(null);
+  const [discountInput, setDiscountInput] = useState("0");
 
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const iva = subtotal * 0.16;
-  const discount = 0;
+  const discount = Math.min(subtotal + iva, Math.max(0, Number(discountInput) || 0));
   const total = subtotal + iva - discount;
 
   const handleProcessPayment = (method: string) => {
@@ -57,12 +58,12 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
   };
 
   return (
-    <section className="bt-panel flex h-full min-h-[720px] flex-col overflow-hidden">
-      <header className="border-b border-[#333333] bg-[#1A3A5F]/18 px-5 py-5 sm:px-6">
+    <section className="bt-panel flex h-full min-h-[720px] flex-col overflow-hidden bg-[#111111] lg:min-h-0">
+      <header className="border-b border-[#333333] bg-[#111111] px-5 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Venta Activa</p>
-            <h2 className="mt-3 text-3xl text-white">Carrito de Venta</h2>
+            <h2 className="mt-3 text-3xl tracking-wider text-white">Carrito de Venta</h2>
           </div>
           <span className="rounded-full border border-[#333333] bg-[#111111] px-3 py-2 font-mono text-xs text-[#E8621A]">
             {items.length} items
@@ -139,8 +140,8 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
         )}
       </div>
 
-      <footer className="border-t border-[#333333] bg-[#101010] px-5 py-5 sm:px-6">
-        <div className="space-y-3 rounded-[12px] border border-[#333333] bg-[#161616] p-4">
+      <footer className="border-t border-[#333333] bg-[#111111] px-5 py-5 sm:px-6">
+        <div className="space-y-4 rounded-[12px] border border-[#333333] bg-[#161616] p-4">
           <div className="flex items-center justify-between text-sm text-[#C7CDD4]">
             <span>Subtotal</span>
             <span className="font-mono">{formatCurrency(subtotal)}</span>
@@ -149,26 +150,49 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
             <span>IVA (16%)</span>
             <span className="font-mono">{formatCurrency(iva)}</span>
           </div>
-          <div className="flex items-center justify-between text-sm text-[#C7CDD4]">
-            <span>Descuento</span>
-            <span className="font-mono">{formatCurrency(discount)}</span>
-          </div>
+
+          <label className="block">
+            <span className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Descuento</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={discountInput}
+              onChange={(event) => setDiscountInput(event.target.value)}
+              className="bt-input mt-2 px-4 py-3"
+              placeholder="0"
+            />
+          </label>
+
           <div className="flex items-center justify-between border-t border-[#333333] pt-4">
-            <span className="text-3xl text-white">TOTAL</span>
+            <span className="text-3xl tracking-wider text-white">TOTAL</span>
             <span className="font-mono text-3xl font-bold text-[#E8621A]">
               {formatCurrency(total)}
             </span>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsPaymentOpen(true)}
-          disabled={items.length === 0}
-          className="bt-button-primary mt-4 w-full px-6 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Pagar Ahora
-        </button>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => {
+              clearCart();
+              setDiscountInput("0");
+            }}
+            disabled={items.length === 0}
+            className="bt-button-ghost w-full px-6 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsPaymentOpen(true)}
+            disabled={items.length === 0 || total < 0}
+            className="bt-button-primary w-full px-6 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Pagar
+          </button>
+        </div>
       </footer>
 
       <PaymentModal

@@ -1,14 +1,58 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
-import SalesChart from "../../../components/admin/SalesChart";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
 
-function dayLabel(date: Date) {
-  return new Intl.DateTimeFormat("es-MX", { weekday: "short" })
+function formatLowercaseDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
     .format(date)
-    .replace(".", "")
-    .toUpperCase();
+    .toLowerCase();
+}
+
+function getMonday(date: Date) {
+  const monday = new Date(date);
+  const day = monday.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setDate(monday.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function formatVsYesterday(current: number, previous: number) {
+  if (previous === 0 && current === 0) {
+    return "vs ayer 0%";
+  }
+
+  if (previous === 0) {
+    return "vs ayer +100%";
+  }
+
+  const diff = ((current - previous) / previous) * 100;
+  const signal = diff >= 0 ? "+" : "";
+  return `vs ayer ${signal}${diff.toFixed(0)}%`;
+}
+
+function createChartPoints(values: number[]) {
+  const width = 560;
+  const height = 180; // Altura reducida para evitar scroll
+  const paddingX = 28;
+  const paddingTop = 18;
+  const paddingBottom = 28;
+  const maxValue = Math.max(...values, 1);
+  const innerWidth = width - paddingX * 2;
+  const innerHeight = height - paddingTop - paddingBottom;
+
+  return values.map((value, index) => {
+    const x = paddingX + (innerWidth / Math.max(values.length - 1, 1)) * index;
+    const y = paddingTop + innerHeight - (value / maxValue) * innerHeight;
+    return { x, y, value };
+  });
 }
 
 export default async function DashboardPage() {
@@ -27,18 +71,26 @@ export default async function DashboardPage() {
   const endOfToday = new Date(now);
   endOfToday.setHours(23, 59, 59, 999);
 
-  const startOfWeek = new Date(startOfToday);
-  startOfWeek.setDate(startOfWeek.getDate() - 6);
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const endOfYesterday = new Date(startOfYesterday);
+  endOfYesterday.setHours(23, 59, 59, 999);
+
+  const startOfWeek = getMonday(now);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
 
   const salesWhere = role === "MANAGER" && storeId ? { storeId } : {};
   const inventoryWhere = role === "MANAGER" && storeId ? { storeId } : {};
 
   const [
     salesToday,
+    salesYesterday,
     transactionsToday,
     lowStockCount,
+    outOfStockCount,
     storesCount,
-    lowStockList,
     recentSales,
     weeklySales,
   ] = await Promise.all([
@@ -49,6 +101,16 @@ export default async function DashboardPage() {
         createdAt: {
           gte: startOfToday,
           lte: endOfToday,
+        },
+      },
+    }),
+    prisma.sale.aggregate({
+      _sum: { total: true },
+      where: {
+        ...salesWhere,
+        createdAt: {
+          gte: startOfYesterday,
+          lte: endOfYesterday,
         },
       },
     }),
@@ -67,23 +129,13 @@ export default async function DashboardPage() {
         quantity: { lte: 2 },
       },
     }),
-    role === "ADMIN" ? prisma.store.count() : 1,
-    prisma.inventory.findMany({
+    prisma.inventory.count({
       where: {
         ...inventoryWhere,
-        quantity: { lte: 2 },
+        quantity: 0,
       },
-      include: {
-        store: true,
-        variant: {
-          include: {
-            product: true,
-          },
-        },
-      },
-      orderBy: [{ quantity: "asc" }],
-      take: 4,
     }),
+    role === "ADMIN" ? prisma.store.count() : 1,
     prisma.sale.findMany({
       where: salesWhere,
       include: {
@@ -99,7 +151,7 @@ export default async function DashboardPage() {
         ...salesWhere,
         createdAt: {
           gte: startOfWeek,
-          lte: endOfToday,
+          lte: endOfWeek,
         },
       },
       select: {
@@ -112,158 +164,315 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const weeklyChart = Array.from({ length: 7 }).map((_, index) => {
+  const weekdays = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
+  const weeklyChart = weekdays.map((label, index) => {
     const date = new Date(startOfWeek);
     date.setDate(startOfWeek.getDate() + index);
 
-    const total = weeklySales
-      .filter((sale) => {
-        const saleDate = new Date(sale.createdAt);
-        return saleDate.toDateString() === date.toDateString();
-      })
+    const value = weeklySales
+      .filter(
+        (sale) =>
+          new Date(sale.createdAt).toDateString() === date.toDateString(),
+      )
       .reduce((sum, sale) => sum + Number(sale.total), 0);
 
-    return {
-      label: dayLabel(date),
-      value: total,
-    };
+    return { label, value };
   });
 
-  const metrics = [
-    {
-      name: "VENTAS HOY",
-      value: formatCurrency(Number(salesToday._sum.total || 0)),
-      accent: "text-[#2ECC71]",
-      note: "Actualizado al momento",
-    },
-    {
-      name: "TRANSACCIONES",
-      value: transactionsToday.toString(),
-      accent: "text-[#E8621A]",
-      note: "Operaciones registradas",
-    },
-    {
-      name: "STOCK BAJO",
-      value: lowStockCount.toString(),
-      accent: "text-[#E8621A]",
-      note: "Productos en alerta",
-    },
-    {
-      name: "SUCURSALES",
-      value: storesCount.toString(),
-      accent: "text-[#2ECC71]",
-      note: role === "ADMIN" ? "Vista global" : "Vista asignada",
-    },
-  ];
+  const chartCoordinates = createChartPoints(
+    weeklyChart.map((point) => point.value),
+  );
+  const chartPolyline = chartCoordinates
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
+  const salesTodayValue = Number(salesToday._sum.total || 0);
+  const salesYesterdayValue = Number(salesYesterday._sum.total || 0);
+  const activeStoreLabel =
+    role === "MANAGER" ? storeName || "Sucursal activa" : "Operativas";
+  const storeRatio =
+    role === "MANAGER" ? "1/1" : `${storesCount}/${storesCount}`;
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Centro de Control</p>
-            <h1 className="mt-3 text-5xl text-white">Dashboard</h1>
-            <p className="mt-3 max-w-2xl text-sm text-[#9CA3AF]">
-              Resumen operativo de Ben Tenison con foco en ventas, stock y sucursales activas.
+    <div className="min-h-screen w-full bg-[#060606] px-6 py-8 text-white">
+      <div className="mx-auto flex max-w-[1320px] flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-[#6B7280]">BT · Dashboard</p>
+          <h1 className="font-['Bebas_Neue'] text-[30px] font-bold uppercase tracking-[0.22em] text-white leading-none">
+            Dashboard
+          </h1>
+          <p className="text-sm text-[#9CA3AF] font-sans">
+            {formatLowercaseDate(now)}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/reports"
+            className="inline-flex items-center gap-2 rounded-[14px] border border-[#333333] bg-[#111111] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#191919]"
+          >
+            📊 Reportes
+          </Link>
+          <Link
+            href="/terminal"
+            className="bt-button-primary rounded-[14px] text-xs uppercase tracking-[0.18em]"
+          >
+            Abrir POS
+          </Link>
+        </div>
+      </div>
+
+      <section className="grid grid-cols-4 gap-6 mb-8">
+        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
+          <div className="flex justify-between items-start gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+              VENTAS HOY
+            </p>
+            <span className="text-sm">💰</span>
+          </div>
+          <div className="mt-3">
+            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-white leading-none">
+              {formatCurrency(salesTodayValue)}
+            </p>
+            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">
+              {formatVsYesterday(salesTodayValue, salesYesterdayValue)}
             </p>
           </div>
+        </article>
 
-          <div className="bt-panel-blue px-5 py-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#C9D8EA]">Cobertura actual</p>
-            <p className="mt-2 font-mono text-sm text-white">
-              {role === "ADMIN" ? "Administracion Global" : storeName || "Sucursal Asignada"}
+        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
+          <div className="flex justify-between items-start gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+              TRANSACCIONES
+            </p>
+            <span className="text-sm text-[#8B95A1]">📄</span>
+          </div>
+          <div className="mt-3">
+            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-white leading-none">
+              {transactionsToday}
+            </p>
+            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">Hoy</p>
+          </div>
+        </article>
+
+        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
+          <div className="flex justify-between items-start gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+              STOCK BAJO
+            </p>
+            <span className="text-sm text-[#F39C12]">⚠️</span>
+          </div>
+          <div className="mt-3">
+            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-[#F39C12] leading-none">
+              {lowStockCount}
+            </p>
+            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">
+              {outOfStockCount} agotados
             </p>
           </div>
-        </header>
+        </article>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((metric) => (
-            <article key={metric.name} className="bt-panel px-5 py-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]">{metric.name}</p>
-                  <p className={`mt-4 font-mono text-3xl font-bold ${metric.accent}`}>{metric.value}</p>
-                </div>
-                <span className="mt-1 h-3 w-3 rounded-full bg-[#E8621A]" />
-              </div>
-              <p className="mt-4 text-sm text-[#9CA3AF]">{metric.note}</p>
-            </article>
-          ))}
-        </section>
+        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
+          <div className="flex justify-between items-start gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+              SUCURSALES
+            </p>
+            <span className="text-sm">🏪</span>
+          </div>
+          <div className="mt-3">
+            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-[#2ECC71] leading-none">
+              {storeRatio}
+            </p>
+            <p className="truncate text-[10px] text-[#8B95A1] uppercase tracking-[0.24em] mt-1">
+              {activeStoreLabel}
+            </p>
+          </div>
+        </article>
+      </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-          <SalesChart points={weeklyChart} />
+      <section className="grid grid-cols-2 gap-10 mb-10">
+        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px]">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
+              📉 Ventas semanales
+            </h2>
+            <span className="rounded-full border border-[#444444] bg-[#111111] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D1D5DB]">
+              Esta semana
+            </span>
+          </div>
 
-          <div className="space-y-6">
-            <article className="bt-panel p-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Alertas</p>
-              <h2 className="mt-3 text-3xl text-white">Stock Bajo</h2>
+          <div className="relative flex-1 overflow-hidden rounded-[18px] border border-[#222222] bg-[#0F0F0F]">
+            <svg
+              viewBox="0 0 560 180"
+              className="absolute inset-0 h-full w-full"
+              preserveAspectRatio="none"
+            >
+              {/* Líneas horizontales de guía */}
+              {[0, 1, 2, 3].map((line) => {
+                const y = 18 + line * 40;
+                return (
+                  <line
+                    key={line}
+                    x1="28"
+                    y1={y}
+                    x2="532"
+                    y2={y}
+                    stroke="#2A2A2A"
+                    strokeWidth="1"
+                    strokeDasharray="4 6"
+                  />
+                );
+              })}
+              <polyline
+                fill="none"
+                stroke="#E8621A"
+                strokeWidth="3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={chartPolyline}
+              />
+              {chartCoordinates.map((point, index) => (
+                <circle
+                  key={index}
+                  cx={point.x}
+                  cy={point.y}
+                  r="3"
+                  fill="#FFFFFF"
+                  stroke="#E8621A"
+                  strokeWidth="1"
+                />
+              ))}
+            </svg>
+          </div>
+          {/* Eje X */}
+          <div className="w-full flex justify-between px-7 pt-2 text-[10px] font-mono text-[#888888]">
+            {weeklyChart.map((point, index) => (
+              <span
+                key={point.label}
+                className={index === 6 ? "text-[#E8621A] font-bold" : ""}
+              >
+                {point.label}
+              </span>
+            ))}
+          </div>
+        </article>
 
-              {lowStockList.length > 0 ? (
-                <div className="mt-5 space-y-3">
-                  {lowStockList.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-4"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-lg font-semibold text-white">
-                            {item.variant.product.name}
-                          </p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-                            {item.store.name} / talla {item.variant.size}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-[#E8621A]/30 bg-[#E8621A]/12 px-3 py-1 font-mono text-xs text-[#E8621A]">
-                          {item.quantity} uds
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-5 rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-5 text-sm text-[#D1FAE5]">
-                  No hay productos en estado critico.
-                </div>
-              )}
-            </article>
+        {/* TOP PRODUCTOS */}
+        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px]">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
+              🏆 Top productos
+            </h2>
+            <span className="rounded-full border border-[#444444] bg-[#111111] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D1D5DB]">
+              Más vendidos
+            </span>
+          </div>
+          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#080808]">
+            <p className="text-sm text-[#8B95A1] font-sans">
+              Sin datos registrados
+            </p>
+          </div>
+        </article>
+      </section>
 
-            <article className="bt-panel p-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Actividad</p>
-              <h2 className="mt-3 text-3xl text-white">Ventas Recientes</h2>
-
-              <div className="mt-5 space-y-3">
+      <section className="grid grid-cols-2 gap-10">
+        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] overflow-hidden min-h-[260px]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
+              🕒 Ventas recientes
+            </h2>
+            <button className="rounded-full border border-[#444444] bg-[#0F0F0F] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
+              Ver todas →
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto">
+            <table className="w-full border-separate border-spacing-y-2">
+              <thead>
+                <tr>
+                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                    FOLIO
+                  </th>
+                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                    SUCURSAL
+                  </th>
+                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                    FECHA
+                  </th>
+                  <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                    TOTAL
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
                 {recentSales.length > 0 ? (
-                  recentSales.map((sale) => (
-                    <div
-                      key={sale.id}
-                      className="flex items-center justify-between rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-4"
-                    >
-                      <div>
-                        <p className="font-mono text-sm text-white">{sale.store.name}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
+                  recentSales.slice(0, 3).map(
+                    (
+                      sale, // Mostramos solo 3 para no desbordar
+                    ) => (
+                      <tr
+                        key={sale.id}
+                        className="border-b border-[#222222] last:border-0"
+                      >
+                        <td className="py-1.5 font-mono text-[11px] text-white">
+                          VTA-{sale.id.slice(-4).toUpperCase()}
+                        </td>
+                        <td className="py-1.5 text-[11px] text-[#CBD5E1] truncate max-w-[100px]">
+                          {sale.store.name}
+                        </td>
+                        <td className="py-1.5 font-mono text-[10px] text-[#888888]">
                           {new Intl.DateTimeFormat("es-MX", {
                             dateStyle: "short",
-                            timeStyle: "short",
                           }).format(sale.createdAt)}
-                        </p>
-                      </div>
-                      <span className="font-mono text-sm font-bold text-[#2ECC71]">
-                        {formatCurrency(Number(sale.total))}
-                      </span>
-                    </div>
-                  ))
+                        </td>
+                        <td className="py-1.5 text-right font-mono text-[11px] text-[#E8621A]">
+                          {formatCurrency(Number(sale.total))}
+                        </td>
+                      </tr>
+                    ),
+                  )
                 ) : (
-                  <div className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-5 text-sm text-[#9CA3AF]">
-                    Sin ventas registradas todavia.
-                  </div>
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-4 text-center text-[10px] text-[#888888] font-mono"
+                    >
+                      Sin transacciones hoy
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </article>
+              </tbody>
+            </table>
           </div>
-        </section>
-      </div>
+        </article>
+
+        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
+              ⚠️ Alertas de stock
+            </h2>
+            <button className="rounded-full border border-[#444444] bg-[#0F0F0F] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
+              Gestionar →
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#0F0F0F] px-4">
+            <label className="flex items-center gap-3 cursor-default">
+              <input
+                type="checkbox"
+                checked={lowStockCount === 0}
+                readOnly
+                className="h-4 w-4 rounded border-[#333333] bg-[#242424] accent-[#2ECC71] pointer-events-none"
+              />
+              <span
+                className={`text-sm font-semibold ${lowStockCount === 0 ? "text-[#2ECC71]" : "text-[#E8621A]"}`}
+              >
+                {lowStockCount === 0
+                  ? "Todo en orden"
+                  : `${lowStockCount} alertas de stock`}
+              </span>
+            </label>
+          </div>
+        </article>
+      </section>
     </div>
   );
 }

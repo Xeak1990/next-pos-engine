@@ -1,17 +1,18 @@
-import { formatCurrency } from "../../lib/utils";
+import { cn, formatCurrency } from "../../lib/utils";
 
 interface SalesChartProps {
   points: Array<{
     label: string;
     value: number;
   }>;
+  className?: string;
 }
 
-export default function SalesChart({ points }: SalesChartProps) {
+export default function SalesChart({ points, className }: SalesChartProps) {
   const maxValue = Math.max(...points.map((point) => point.value), 1);
 
   return (
-    <div className="rounded-[12px] border border-[#333333] bg-[#111111] p-5">
+    <div className={cn("bt-panel flex h-full flex-col p-6", className)}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Dashboard</p>
@@ -22,7 +23,7 @@ export default function SalesChart({ points }: SalesChartProps) {
         </span>
       </div>
 
-      <div className="mt-8 grid h-64 grid-cols-7 items-end gap-3">
+      <div className="mt-8 grid h-full min-h-[320px] grid-cols-7 items-end gap-3">
         {points.map((point) => {
           const height = `${Math.max((point.value / maxValue) * 100, 12)}%`;
 

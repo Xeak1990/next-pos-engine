@@ -65,6 +65,11 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState<DateRangeKey>("today");
 
+  const handleExport = () => {
+    console.log("Exportando...");
+    window.print();
+  };
+
   useEffect(() => {
     async function loadReport() {
       setLoading(true);
@@ -114,12 +119,12 @@ export default function ReportsPage() {
   const maxDailySales = Math.max(...report.salesTrend.map((point) => point.total), 1);
 
   return (
-    <div className="report-print-area min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <div className="report-print-area min-h-screen bg-[#0F0F0F] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="space-y-6">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Analitica</p>
-            <h1 className="mt-3 text-5xl text-white">Reportes</h1>
+            <h1 className="mt-3 text-5xl tracking-wider text-white">Reportes</h1>
             <p className="mt-3 text-sm text-[#9CA3AF]">
               Vista consolidada de ventas, sucursales y productos destacados.
             </p>
@@ -143,7 +148,7 @@ export default function ReportsPage() {
 
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handleExport}
               className="bt-button-secondary no-print px-5 py-3 text-xs"
             >
               Exportar PDF

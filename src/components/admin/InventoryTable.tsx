@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { updateStock } from "../../actions/inventory";
-import { formatCurrency } from "../../lib/utils";
 
 interface InventoryItem {
   id: string;
@@ -21,7 +20,6 @@ interface InventoryItem {
 }
 
 const branchButtons = [
-  { id: "all", label: "Todas" },
   { id: "centro-xalapa", label: "Centro Xalapa" },
   { id: "galeria-veracruz", label: "Galeria Veracruz" },
   { id: "plaza-crystal", label: "Plaza Crystal" },
@@ -38,10 +36,6 @@ function normalizeString(value: string) {
 function matchesBranch(item: InventoryItem, branchId: (typeof branchButtons)[number]["id"]) {
   const normalizedStore = normalizeString(`${item.storeName} ${item.storeLocation}`);
 
-  if (branchId === "all") {
-    return true;
-  }
-
   if (branchId === "centro-xalapa") {
     return normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico");
   }
@@ -53,10 +47,26 @@ function matchesBranch(item: InventoryItem, branchId: (typeof branchButtons)[num
   return normalizedStore.includes("plaza crystal") || normalizedStore.includes("plaza");
 }
 
+function getBranchIdFromStore(storeName: string, storeLocation: string) {
+  const normalizedStore = normalizeString(`${storeName} ${storeLocation}`);
+
+  if (normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico")) {
+    return "centro-xalapa";
+  }
+
+  if (normalizedStore.includes("galeria veracruz") || normalizedStore.includes("veracruz")) {
+    return "galeria-veracruz";
+  }
+
+  return "plaza-crystal";
+}
+
 export default function InventoryTable({ initialData }: { initialData: InventoryItem[] }) {
   const [inventory, setInventory] = useState(initialData);
   const [user, setUser] = useState<{ role: string; storeId: string | null } | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<(typeof branchButtons)[number]["id"]>("all");
+  const [selectedBranch, setSelectedBranch] = useState<(typeof branchButtons)[number]["id"]>(
+    "centro-xalapa",
+  );
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -69,13 +79,20 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
 
         const data = await response.json();
         setUser({ role: data.role, storeId: data.storeId });
+
+        if (data.storeId) {
+          const scopedItem = initialData.find((item) => item.storeId === data.storeId);
+          if (scopedItem) {
+            setSelectedBranch(getBranchIdFromStore(scopedItem.storeName, scopedItem.storeLocation));
+          }
+        }
       } catch (error) {
         console.error("Error fetching user:", error);
       }
     };
 
     fetchUser();
-  }, []);
+  }, [initialData]);
 
   const userScopedInventory =
     user?.role === "MANAGER" && user.storeId
@@ -104,45 +121,49 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
   };
 
   return (
-    <section className="bt-panel overflow-hidden">
-      <div className="border-b border-[#333333] bg-[#1A3A5F]/18 px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]">Filtros de sucursal</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {branchButtons.map((branch) => (
-                <button
-                  key={branch.id}
-                  type="button"
-                  onClick={() => setSelectedBranch(branch.id)}
-                  className={
-                    selectedBranch === branch.id
-                      ? "bt-button-primary px-4 py-2 text-xs"
-                      : "bt-button-ghost px-4 py-2 text-xs"
-                  }
-                >
-                  {branch.label}
-                </button>
-              ))}
-            </div>
-          </div>
+    <section className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="grid gap-4 md:grid-cols-3">
+          {branchButtons.map((branch) => {
+            const isActive = selectedBranch === branch.id;
 
-          <div className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Registros visibles</p>
-            <p className="mt-2 font-mono text-2xl font-bold text-white">{visibleInventory.length}</p>
-          </div>
+            return (
+              <button
+                key={branch.id}
+                type="button"
+                onClick={() => setSelectedBranch(branch.id)}
+                className={
+                  isActive
+                    ? "rounded-[12px] border border-[#E8621A] bg-[#E8621A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[0_12px_28px_rgba(232,98,26,0.18)]"
+                    : "rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#CBD5E1] hover:border-[#E8621A] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                }
+                disabled={Boolean(user?.storeId && !canModifyStock && selectedBranch !== branch.id)}
+              >
+                {branch.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Registros visibles</p>
+          <p className="mt-2 font-mono text-3xl font-bold text-white">{visibleInventory.length}</p>
         </div>
       </div>
 
-      <div className="bt-table-shell rounded-none border-0 bg-transparent">
+      <div className="bt-table-shell">
         <div className="custom-scrollbar overflow-x-auto">
-          <table className="bt-table min-w-[980px]">
+          <table className="bt-table min-w-[760px] table-fixed">
+            <colgroup>
+              <col className="w-[44%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
+              <col className="w-[20%]" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Producto</th>
                 <th>Talla</th>
-                <th>Sucursal</th>
-                <th>Precio</th>
                 <th>Stock</th>
                 <th className="text-right">Acciones</th>
               </tr>
@@ -154,20 +175,11 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                     <div>
                       <p className="font-semibold text-white">{item.variant.product.name}</p>
                       <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#94A3B8]">
-                        {item.variant.color}
+                        {item.variant.color} / {item.storeName}
                       </p>
                     </div>
                   </td>
                   <td className="font-mono text-sm text-white">{item.variant.size}</td>
-                  <td>
-                    <div>
-                      <p className="text-sm text-white">{item.storeName}</p>
-                      <p className="mt-1 text-xs text-[#94A3B8]">{item.storeLocation}</p>
-                    </div>
-                  </td>
-                  <td className="font-mono text-sm text-[#2ECC71]">
-                    {formatCurrency(item.variant.price)}
-                  </td>
                   <td>
                     <span
                       className={`rounded-full px-3 py-1 font-mono text-xs font-semibold ${
@@ -199,8 +211,8 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                           </button>
                         </>
                       ) : (
-                        <span className="rounded-[8px] border border-[#333333] bg-[#111111] px-3 py-2 text-xs uppercase tracking-[0.18em] text-[#94A3B8]">
-                          Solo lectura
+                        <span className="px-3 py-2 text-xs uppercase tracking-[0.18em] text-[#6B7280]">
+                          --
                         </span>
                       )}
                     </div>
@@ -210,7 +222,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
 
               {visibleInventory.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-14 text-center text-sm text-[#9CA3AF]">
+                  <td colSpan={4} className="px-6 py-14 text-center text-sm text-[#9CA3AF]">
                     No hay existencias para la sucursal seleccionada.
                   </td>
                 </tr>
@@ -221,7 +233,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       </div>
 
       {isPending && (
-        <div className="border-t border-[#333333] bg-[#111111] px-5 py-3 text-xs uppercase tracking-[0.24em] text-[#94A3B8]">
+        <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-3 text-xs uppercase tracking-[0.24em] text-[#94A3B8]">
           Sincronizando inventario...
         </div>
       )}
