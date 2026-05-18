@@ -142,7 +142,7 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 1.5rem !important;
     background: rgba(16, 16, 16, 0.92) !important;
-    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.30);
+    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(8px);
   }
 
@@ -154,6 +154,15 @@
       rgba(26, 58, 95, 0.28),
       rgba(15, 15, 15, 0.88)
     );
+  }
+
+/* RECALIBRACIÓN: UN PELÍN MÁS CLARO PARA CALCAR EL MOCKUP */
+  .bt-panel-charcoal {
+    border: 1px solid #333333 !important;     /* <--- Contorno un pelín más visible */
+    border-radius: 1.5rem !important;
+    background: #141414 !important;         
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
   }
 
   /* SISTEMA DE BOTONES COMPORTAMIENTO MOCKUP (ALTURA OPTIMIZADA CON DISPLAY INTEGRADO) */
@@ -177,6 +186,21 @@
 
   .bt-button-primary:hover {
     background: #f07330;
+  }
+
+  /* --- INSTANCIA / EXTENSIÓN CONTROLADA DEL BOTÓN --- */
+  .bt-button-primary.bt-button-login {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: auto !important;
+
+    /* MODIFICA ESTOS VALORES A TU GUSTO */
+    padding: 16px 16px !important; /* <- Altura / Grosor del botón */
+    font-size: 14px !important; /* <- Tamaño de la letra */
+
+    /* CONTROL DE NEGRITAS */
+    font-weight: 900 !important; /* <- Puedes usar 700 (bold), 800 (extra-bold) o 900 (black) */
   }
 
   .bt-button-secondary {

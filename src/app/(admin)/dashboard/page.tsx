@@ -196,11 +196,13 @@ export default async function DashboardPage() {
     <div className="min-h-screen w-full bg-[#060606] px-6 py-8 text-white">
       <div className="mx-auto flex max-w-[1320px] flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-[#6B7280]">BT · Dashboard</p>
-          <h1 className="font-['Bebas_Neue'] text-[30px] font-bold uppercase tracking-[0.22em] text-white leading-none">
+          <span className="inline-flex items-center rounded-full border border-[#222222] bg-[#111111] px-3 py-1 text-[10px] uppercase tracking-[0.32em] text-[#A1A1AA]">
+            BT · Dashboard
+          </span>
+          <h1 className="font-['Arial'] text-[32px] font-bold uppercase tracking-[0.18em] text-white leading-none">
             Dashboard
           </h1>
-          <p className="text-sm text-[#9CA3AF] font-sans">
+          <p className="text-sm font-[Arial] text-[#9CA3AF]">
             {formatLowercaseDate(now)}
           </p>
         </div>
@@ -224,16 +226,16 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-4 gap-6 mb-8">
         <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
           <div className="flex justify-between items-start gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
               VENTAS HOY
             </p>
             <span className="text-sm">💰</span>
           </div>
           <div className="mt-3">
-            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-white leading-none">
+            <p className="font-[Arial] text-[22px] font-bold text-white leading-none">
               {formatCurrency(salesTodayValue)}
             </p>
-            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">
+            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">
               {formatVsYesterday(salesTodayValue, salesYesterdayValue)}
             </p>
           </div>
@@ -241,31 +243,31 @@ export default async function DashboardPage() {
 
         <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
           <div className="flex justify-between items-start gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
               TRANSACCIONES
             </p>
-            <span className="text-sm text-[#8B95A1]">📄</span>
+            <span className="text-sm text-[#9CA3AF]">📄</span>
           </div>
           <div className="mt-3">
-            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-white leading-none">
+            <p className="font-[Arial] text-[22px] font-bold text-white leading-none">
               {transactionsToday}
             </p>
-            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">Hoy</p>
+            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">Hoy</p>
           </div>
         </article>
 
         <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
           <div className="flex justify-between items-start gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
               STOCK BAJO
             </p>
             <span className="text-sm text-[#F39C12]">⚠️</span>
           </div>
           <div className="mt-3">
-            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-[#F39C12] leading-none">
+            <p className="font-[Arial] text-[22px] font-bold text-[#F39C12] leading-none">
               {lowStockCount}
             </p>
-            <p className="mt-1 text-[10px] text-[#8B95A1] uppercase tracking-[0.24em]">
+            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">
               {outOfStockCount} agotados
             </p>
           </div>
@@ -273,16 +275,16 @@ export default async function DashboardPage() {
 
         <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
           <div className="flex justify-between items-start gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8B95A1]">
+            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
               SUCURSALES
             </p>
             <span className="text-sm">🏪</span>
           </div>
           <div className="mt-3">
-            <p className="font-['JetBrains_Mono'] text-[20px] font-bold text-[#2ECC71] leading-none">
+            <p className="font-[Arial] text-[22px] font-bold text-[#2ECC71] leading-none">
               {storeRatio}
             </p>
-            <p className="truncate text-[10px] text-[#8B95A1] uppercase tracking-[0.24em] mt-1">
+            <p className="truncate text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em] mt-1">
               {activeStoreLabel}
             </p>
           </div>
@@ -295,7 +297,7 @@ export default async function DashboardPage() {
             <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
               📉 Ventas semanales
             </h2>
-            <span className="rounded-full border border-[#444444] bg-[#111111] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D1D5DB]">
+            <span className="rounded-full bg-[#E8621A] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
               Esta semana
             </span>
           </div>
@@ -362,12 +364,12 @@ export default async function DashboardPage() {
             <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
               🏆 Top productos
             </h2>
-            <span className="rounded-full border border-[#444444] bg-[#111111] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#D1D5DB]">
+            <span className="rounded-full bg-[#2ECC71] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0B1F0F]">
               Más vendidos
             </span>
           </div>
-          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#080808]">
-            <p className="text-sm text-[#8B95A1] font-sans">
+          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#111111]">
+            <p className="text-sm text-[#D1D5DB] font-sans">
               Sin datos registrados
             </p>
           </div>
@@ -380,7 +382,7 @@ export default async function DashboardPage() {
             <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
               🕒 Ventas recientes
             </h2>
-            <button className="rounded-full border border-[#444444] bg-[#0F0F0F] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
+            <button className="rounded-full border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
               Ver todas →
             </button>
           </div>
@@ -449,7 +451,7 @@ export default async function DashboardPage() {
             <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
               ⚠️ Alertas de stock
             </h2>
-            <button className="rounded-full border border-[#444444] bg-[#0F0F0F] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
+            <button className="rounded-full border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
               Gestionar →
             </button>
           </div>

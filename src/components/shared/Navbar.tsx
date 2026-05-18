@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactElement, type SVGProps } from "react";
-import { cn } from "../../lib/utils"; // Asegúrate de que esta ruta sea la correcta para tu proyecto
+import { cn } from "../../lib/utils";
 
 type UserRole = "ADMIN" | "MANAGER" | "CASHIER";
 
@@ -422,18 +422,18 @@ export default function Navbar() {
      RENDERIZADO DE SECCIONES
      ========================================= */
   const renderSection = (section: NavSection, compact = false) => (
-    <section key={section.title} className="mb-6">
+    <section key={section.title} className="mb-4">
       <p
         className={cn(
-          "px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-[#555555]",
-          compact && "px-2",
+          "inline-flex h-8 min-h-[32px] items-center rounded-full px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B7280]",
+          compact && "px-3",
         )}
       >
         {section.title}
       </p>
 
       {/* Espaciado limpio entre botones */}
-      <div className="mt-3 flex flex-col gap-1.5">
+      <div className="mt-3 flex flex-col gap-3">
         {section.items.map((item) => {
           const isActive = isActivePath(pathname, item.href);
           const Icon = item.icon;
@@ -445,24 +445,33 @@ export default function Navbar() {
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 // Bordes suavizados rectangulares (rounded-lg)
-                "group relative flex items-center gap-3 overflow-hidden rounded-lg px-4 py-2.5 text-[14px] font-medium transition-all duration-200",
+                "group relative flex items-center gap-3 overflow-hidden rounded-lg pl-10 pr-4 py-3 min-h-[48px] text-[14px] font-medium transition-all duration-150",
                 compact && "px-3 py-2 text-sm",
                 isActive
                   ? // Estado activo: Fondo sutil, texto naranja e indicador lateral (calcado al mockup)
                     "bg-[#E8621A]/10 text-[#E8621A] before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-[#E8621A]"
                   : // Estado inactivo: Gris tenue y hover elegante
-                    "text-[#8A8F98] hover:bg-[#1A1A1A] hover:text-white",
+                    "text- hover:bg-[#1A1A1A] hover:text-white",
               )}
             >
               <Icon
                 className={cn(
-                  "h-[18px] w-[18px] shrink-0 transition-colors",
+                  "h-[20px] w-[20px] shrink-0 transition-colors",
                   isActive
                     ? "text-[#E8621A]"
                     : "text-[#70757D] group-hover:text-white",
                 )}
               />
-              <span>{item.name}</span>
+              <span
+                className={cn(
+                  "transition-all duration-200 transform",
+                  isActive
+                    ? "text-[#E8621A] scale-105 font-semibold"
+                    : "text-[#9CA3AF] group-hover:text-[#E8621A] group-hover:scale-105",
+                )}
+              >
+                {item.name}
+              </span>
             </Link>
           );
         })}
@@ -474,18 +483,18 @@ export default function Navbar() {
      FOOTER / PERFIL (Calcado al mockup)
      ========================================= */
   const accountCard = user ? (
-    <div className="flex items-center justify-between rounded-xl bg-[#1A1A1A]/80 p-2.5 transition-colors hover:bg-[#1f1f1f]">
-      <div className="flex min-w-0 items-center gap-3">
-        {/* Avatar naranja */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E8621A] text-xs font-bold text-white shadow-sm">
+    <div className="flex items-center justify-between rounded-[24px] bg-[#181818] p-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {/* Avatar circular */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8621A]/15 border border-[#E8621A]/25 text-sm font-bold text-[#E8621A]">
+          {" "}
           {userInitials}
         </div>
-        <div className="min-w-0">
-          {/* Nombre y Rol */}
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-white leading-tight">
             {user.name}
           </p>
-          <p className="mt-0.5 text-[9px] uppercase tracking-widest text-[#8A8F98]">
+          <p className="mt-0.5 text-[9px] uppercase tracking-widest text-[#6B7280]">
             {getRoleLabel(user.role)}
           </p>
         </div>
@@ -494,7 +503,7 @@ export default function Navbar() {
       <button
         type="button"
         onClick={handleLogout}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8A8F98] hover:bg-[#2A2A2A] hover:text-white transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#181818] border border-[#222222] text-[#9CA3AF] transition-colors"
         aria-label="Cerrar sesión"
       >
         <PowerIcon className="h-[18px] w-[18px]" />
@@ -530,30 +539,30 @@ export default function Navbar() {
   return (
     <aside className="flex h-full w-full flex-col border-r border-[#1C1C1C] bg-[#121212]">
       {/* Cabecera / Logo */}
-      <div className="shrink-0 border-b border-[#1C1C1C] px-6 py-7">
+      <div className="shrink-0 border-b border-[#1C1C1C] px-5 py-4">
         <Link href="/" className="block">
-          <p className="font-bebas text-[2rem] uppercase leading-none tracking-wide text-white">
-            BEN <span className="text-[#E8621A]">TENISON</span>
+          <p className="font-bebas font-black text-[1.125rem] uppercase leading-none tracking-[0.06em] text-white">
+            BEN <span className="text-[#E8621A]">TEN</span>ISON
           </p>
-          <p className="mt-2 text-[10px] uppercase tracking-[0.25em] text-[#6B7280]">
+          <p className="-mt-1 text-[10px] uppercase tracking-[0.18em] text-[#6B7280]">
             Sistema omnicanal
           </p>
         </Link>
       </div>
 
       {/* Cuerpo del Menú con Scroll independiente */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-2 py-4 min-h-0">
         {loading ? (
           loadingState
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
             {visibleSections.map((section) => renderSection(section))}
           </div>
         )}
       </div>
 
       {/* Footer (Tarjeta de Usuario) fijado abajo */}
-      <div className="shrink-0 border-t border-[#1C1C1C] p-4">
+      <div className="shrink-0 border-t border-[#1C1C1C] p-3">
         {!loading && accountCard}
       </div>
     </aside>
