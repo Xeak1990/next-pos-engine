@@ -537,7 +537,7 @@ export default function Navbar() {
   );
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-[#1C1C1C] bg-[#121212]">
+    <aside className="flex h-full w-full flex-col border-r border-[#1C1C1C] bg-[#121212] overflow-hidden">
       {/* Cabecera / Logo */}
       <div className="shrink-0 border-b border-[#1C1C1C] px-5 py-4">
         <Link href="/" className="block">
@@ -551,7 +551,7 @@ export default function Navbar() {
       </div>
 
       {/* Cuerpo del Menú con Scroll independiente */}
-      <div className="flex-1 overflow-y-auto px-2 py-4 min-h-0">
+      <div className="flex-1 overflow-y-auto px-2 py-4 min-h-0 custom-scrollbar">
         {loading ? (
           loadingState
         ) : (

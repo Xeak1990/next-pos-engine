@@ -88,3 +88,30 @@ enum Role {
   MANAGER
   CASHIER
 }
+
+model Order {
+  id             String      @id @default(cuid())
+  customerName   String
+  customerEmail  String
+  customerPhone  String?
+  address        String
+  city           String
+  postalCode     String
+  paymentMethod  String
+  total          Float
+  status         String      @default("pending")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  items          OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  price     Float
+  quantity  Int
+  size      String?
+}

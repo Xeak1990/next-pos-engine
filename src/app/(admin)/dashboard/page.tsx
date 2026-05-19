@@ -193,21 +193,47 @@ export default async function DashboardPage() {
     role === "MANAGER" ? "1/1" : `${storesCount}/${storesCount}`;
 
   return (
-    <div className="min-h-screen w-full bg-[#060606] px-6 py-8 text-white">
-      <div className="mx-auto flex max-w-[1320px] flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <span className="inline-flex items-center rounded-full border border-[#222222] bg-[#111111] px-3 py-1 text-[10px] uppercase tracking-[0.32em] text-[#A1A1AA]">
-            BT · Dashboard
-          </span>
-          <h1 className="font-['Arial'] text-[32px] font-bold uppercase tracking-[0.18em] text-white leading-none">
+    <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden">
+      {/* Ajustamos el contenedor de la cabecera para que sea un row y use justify-between */}
+      {/* Después: Quitamos mx-auto y max-w, usamos w-full */}
+      <div className="flex w-full items-start justify-between mb-[15px]">
+        {/* GRUPO IZQUIERDO: Migas, Título y Fecha */}
+        <div className="flex flex-col">
+          {/* NUEVO: Migas de Pan (Breadcrumbs) */}
+          <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
+            <Link
+              href="/"
+              className="hover:text-white transition-colors duration-200"
+            >
+              Principal
+            </Link>
+            <span>/</span>
+            {/* Resaltamos la página actual con tu color naranja */}
+            <span className="text-[#e8621a]">Dashboard</span>
+          </nav>
+
+          {/* TÍTULO LIMPIO */}
+          <h1
+            className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
+            style={{
+              fontFamily: "Arial, sans-serif",
+              // Mantenemos solo el transform que estira la letra y el borde blanco
+              transform: "scale(0.85, 1.15)",
+              transformOrigin: "left center",
+              WebkitTextStroke: "1.5px white",
+            }}
+          >
             Dashboard
           </h1>
-          <p className="text-sm font-[Arial] text-[#9CA3AF]">
+
+          {/* FECHA */}
+          <p className="mt-3 text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
             {formatLowercaseDate(now)}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        {/* GRUPO DERECHO: Botones (Se queda igual) */}
+        <div className="flex items-center gap-3 mt-1">
           <Link
             href="/reports"
             className="inline-flex items-center gap-2 rounded-[14px] border border-[#333333] bg-[#111111] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#191919]"
@@ -223,193 +249,317 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <section className="grid grid-cols-4 gap-6 mb-8">
-        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
-          <div className="flex justify-between items-start gap-3">
-            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
+      {/* 1. SEPARACIÓN EXTERIOR ENTRE TARJETAS */}
+      <section className="grid grid-cols-4 gap-[15px] mb-8">
+        {/* VENTAS HOY (sin cambios estructurales, solo se mantiene) */}
+        <article
+          className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+          style={{
+            height: "125px",
+            minHeight: "unset",
+            padding: "0",
+          }}
+        >
+          <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               VENTAS HOY
             </p>
-            <span className="text-sm">💰</span>
           </div>
-          <div className="mt-3">
-            <p className="font-[Arial] text-[22px] font-bold text-white leading-none">
+          <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
+            <p
+              className="text-[26px] font-[900] text-[#e8621a] uppercase flex items-center h-full"
+              style={{
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: "-0.04em",
+                transform: "scaleY(1.35) translateY(15px)",
+                transformOrigin: "center center",
+                WebkitTextStroke: "1.4px #e8621a",
+                textShadow: "0 0 1px #e8621a",
+              }}
+            >
               {formatCurrency(salesTodayValue)}
             </p>
-            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">
+          </div>
+          <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               {formatVsYesterday(salesTodayValue, salesYesterdayValue)}
             </p>
           </div>
         </article>
 
-        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
-          <div className="flex justify-between items-start gap-3">
-            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
+        {/* TRANSACCIONES - Misma forma que VENTAS HOY */}
+        <article
+          className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+          style={{ height: "125px", minHeight: "unset", padding: "0" }}
+        >
+          <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               TRANSACCIONES
             </p>
-            <span className="text-sm text-[#9CA3AF]">📄</span>
           </div>
-          <div className="mt-3">
-            <p className="font-[Arial] text-[22px] font-bold text-white leading-none">
+          <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
+            <p
+              className="text-[26px] font-[900] text-white uppercase flex items-center h-full"
+              style={{
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: "-0.04em",
+                transform: "scaleY(1.35) translateY(15px)",
+                transformOrigin: "center center",
+              }}
+            >
               {transactionsToday}
             </p>
-            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">Hoy</p>
+          </div>
+          <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              Hoy
+            </p>
           </div>
         </article>
 
-        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
-          <div className="flex justify-between items-start gap-3">
-            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
+        {/* STOCK BAJO - Misma forma */}
+        <article
+          className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+          style={{ height: "125px", minHeight: "unset", padding: "0" }}
+        >
+          <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               STOCK BAJO
             </p>
-            <span className="text-sm text-[#F39C12]">⚠️</span>
           </div>
-          <div className="mt-3">
-            <p className="font-[Arial] text-[22px] font-bold text-[#F39C12] leading-none">
+          <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
+            <p
+              className="text-[26px] font-[900] text-[#F39C12] uppercase flex items-center h-full"
+              style={{
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: "-0.04em",
+                transform: "scaleY(1.35) translateY(15px)",
+                transformOrigin: "center center",
+              }}
+            >
               {lowStockCount}
             </p>
-            <p className="mt-1 pl-1 text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em]">
+          </div>
+          <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               {outOfStockCount} agotados
             </p>
           </div>
         </article>
 
-        <article className="bt-panel rounded-[22px] p-4 flex flex-col justify-between shadow-[0_12px_30px_rgba(0,0,0,0.22)] min-h-[140px]">
-          <div className="flex justify-between items-start gap-3">
-            <p className="pl-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#9CA3AF]">
+        {/* SUCURSALES - Misma forma */}
+        <article
+          className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+          style={{ height: "125px", minHeight: "unset", padding: "0" }}
+        >
+          <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               SUCURSALES
             </p>
-            <span className="text-sm">🏪</span>
           </div>
-          <div className="mt-3">
-            <p className="font-[Arial] text-[22px] font-bold text-[#2ECC71] leading-none">
+          <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
+            <p
+              className="text-[26px] font-[900] text-[#2ECC71] uppercase flex items-center h-full"
+              style={{
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: "-0.04em",
+                transform: "scaleY(1.35) translateY(15px)",
+                transformOrigin: "center center",
+              }}
+            >
               {storeRatio}
             </p>
-            <p className="truncate text-[10px] text-[#9CA3AF] uppercase tracking-[0.22em] mt-1">
+          </div>
+          <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
+            <p className="truncate text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
               {activeStoreLabel}
             </p>
           </div>
         </article>
       </section>
 
-      <section className="grid grid-cols-2 gap-10 mb-10">
-        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px]">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
-              📉 Ventas semanales
-            </h2>
-            <span className="rounded-full bg-[#E8621A] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
-              Esta semana
-            </span>
-          </div>
+      {/* SECCIÓN TARJETAS PEQUEÑAS (sin cambios, solo ajuste de margen inferior a 10px) */}
+      <section className="grid grid-cols-4 gap-[15px] mb-[10px]">
+        {/* ... contenido de VENTAS HOY, TRANSACCIONES, STOCK BAJO, SUCURSALES (igual que antes) ... */}
+      </section>
 
-          <div className="relative flex-1 overflow-hidden rounded-[18px] border border-[#222222] bg-[#0F0F0F]">
-            <svg
-              viewBox="0 0 560 180"
-              className="absolute inset-0 h-full w-full"
-              preserveAspectRatio="none"
-            >
-              {/* Líneas horizontales de guía */}
-              {[0, 1, 2, 3].map((line) => {
-                const y = 18 + line * 40;
-                return (
-                  <line
-                    key={line}
-                    x1="28"
-                    y1={y}
-                    x2="532"
-                    y2={y}
-                    stroke="#2A2A2A"
-                    strokeWidth="1"
-                    strokeDasharray="4 6"
-                  />
-                );
-              })}
-              <polyline
-                fill="none"
-                stroke="#E8621A"
-                strokeWidth="3"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                points={chartPolyline}
-              />
-              {chartCoordinates.map((point, index) => (
-                <circle
-                  key={index}
-                  cx={point.x}
-                  cy={point.y}
-                  r="3"
-                  fill="#FFFFFF"
-                  stroke="#E8621A"
-                  strokeWidth="1"
-                />
-              ))}
-            </svg>
-          </div>
-          {/* Eje X */}
-          <div className="w-full flex justify-between px-7 pt-2 text-[10px] font-mono text-[#888888]">
-            {weeklyChart.map((point, index) => (
-              <span
-                key={point.label}
-                className={index === 6 ? "text-[#E8621A] font-bold" : ""}
+      {/* PRIMERA FILA DE TARJETAS GRANDES */}
+      <section className="grid grid-cols-2 gap-[15px] mb-[15px]">
+        {/* VENTAS SEMANALES */}
+        <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
+          <div className="w-[88%] mx-auto flex flex-col h-full">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2
+                className="text-[20px] font-[900] uppercase text-white tracking-tight"
+                style={{
+                  fontFamily: "Arial, sans-serif",
+                  transform: "scale(0.9, 1.1)",
+                  transformOrigin: "left center",
+                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
+                }}
               >
-                {point.label}
+                📉 Ventas semanales
+              </h2>
+              <span
+                style={{
+                  display: "inline-block",
+                  borderRadius: "9999px",
+                  backgroundColor: "#2C2418", // gris oscuro con tono naranja (difuminado/tierra)
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                  color: "#C2410C", // naranja intenso (el que iba en el fondo)
+                  lineHeight: "1",
+                  boxShadow:
+                    "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
+                }}
+              >
+                Esta semana
               </span>
-            ))}
+            </div>
+
+            <div className="relative flex-1 overflow-hidden">
+              <svg
+                viewBox="0 0 560 180"
+                className="absolute inset-0 h-full w-full"
+                preserveAspectRatio="none"
+              >
+                {[0, 1, 2, 3].map((line) => {
+                  const y = 18 + line * 40;
+                  return (
+                    <line
+                      key={line}
+                      x1="28"
+                      y1={y}
+                      x2="532"
+                      y2={y}
+                      stroke="#2A2A2A"
+                      strokeWidth="1"
+                      strokeDasharray="4 6"
+                    />
+                  );
+                })}
+                <polyline
+                  fill="none"
+                  stroke="#E8621A"
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  points={chartPolyline}
+                />
+                {chartCoordinates.map((point, index) => (
+                  <circle
+                    key={index}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3"
+                    fill="#FFFFFF"
+                    stroke="#E8621A"
+                    strokeWidth="1"
+                  />
+                ))}
+              </svg>
+            </div>
+            <div className="w-full flex justify-between px-7 pt-2 text-[10px] font-mono text-[#888888]">
+              {weeklyChart.map((point, index) => (
+                <span
+                  key={point.label}
+                  className={index === 6 ? "text-[#E8621A] font-bold" : ""}
+                >
+                  {point.label}
+                </span>
+              ))}
+            </div>
           </div>
         </article>
 
         {/* TOP PRODUCTOS */}
-        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px]">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <h2 className="font-['Bebas_Neue'] text-[22px] tracking-[0.22em] text-white uppercase">
-              🏆 Top productos
-            </h2>
-            <span className="rounded-full bg-[#2ECC71] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0B1F0F]">
-              Más vendidos
-            </span>
-          </div>
-          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#111111]">
-            <p className="text-sm text-[#D1D5DB] font-sans">
-              Sin datos registrados
-            </p>
+        <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
+          <div className="w-[88%] mx-auto flex flex-col h-full">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2
+                className="text-[20px] font-[900] uppercase text-white tracking-tight"
+                style={{
+                  fontFamily: "Arial, sans-serif",
+                  transform: "scale(0.9, 1.1)",
+                  transformOrigin: "left center",
+                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
+                }}
+              >
+                🏆 Top productos
+              </h2>
+              <span
+                style={{
+                  display: "inline-block",
+                  borderRadius: "9999px",
+                  backgroundColor: "#1E2A1C", // gris oscuro con tono verde (difuminado/tierra verde)
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                  color: "#2ECC71", // verde intenso (el clásico éxito)
+                  lineHeight: "1",
+                  boxShadow:
+                    "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
+                }}
+              >
+                Más vendidos
+              </span>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-[13px] font-semibold text-[#9CA3AF] font-sans">
+                Sin datos registrados
+              </p>
+            </div>
           </div>
         </article>
       </section>
 
-      <section className="grid grid-cols-2 gap-10">
-        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] overflow-hidden min-h-[260px]">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
-              🕒 Ventas recientes
-            </h2>
-            <button className="rounded-full border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
-              Ver todas →
-            </button>
-          </div>
-          <div className="flex-1 overflow-auto">
-            <table className="w-full border-separate border-spacing-y-2">
-              <thead>
-                <tr>
-                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
-                    FOLIO
-                  </th>
-                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
-                    SUCURSAL
-                  </th>
-                  <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
-                    FECHA
-                  </th>
-                  <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
-                    TOTAL
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSales.length > 0 ? (
-                  recentSales.slice(0, 3).map(
-                    (
-                      sale, // Mostramos solo 3 para no desbordar
-                    ) => (
+      {/* SEGUNDA FILA DE TARJETAS GRANDES */}
+      <section className="grid grid-cols-2 gap-[15px]">
+        {/* VENTAS RECIENTES */}
+        <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] overflow-hidden min-h-[260px] pt-4 pb-4">
+          <div className="w-[88%] mx-auto flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-[20px] font-[900] uppercase text-white tracking-tight"
+                style={{
+                  fontFamily: "Arial, sans-serif",
+                  transform: "scale(0.9, 1.1)",
+                  transformOrigin: "left center",
+                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
+                }}
+              >
+                🕒 Ventas recientes
+              </h2>
+              <button className="rounded-md border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280] hover:text-white">
+                Ver todas →
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full border-separate border-spacing-y-2">
+                <thead>
+                  <tr>
+                    <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      FOLIO
+                    </th>
+                    <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      SUCURSAL
+                    </th>
+                    <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      FECHA
+                    </th>
+                    <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      TOTAL
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentSales.length > 0 ? (
+                    recentSales.slice(0, 3).map((sale) => (
                       <tr
                         key={sale.id}
                         className="border-b border-[#222222] last:border-0"
@@ -429,49 +579,59 @@ export default async function DashboardPage() {
                           {formatCurrency(Number(sale.total))}
                         </td>
                       </tr>
-                    ),
-                  )
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="py-4 text-center text-[10px] text-[#888888] font-mono"
-                    >
-                      Sin transacciones hoy
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="py-4 text-center text-[10px] text-[#888888] font-mono"
+                      >
+                        Sin transacciones hoy
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </article>
 
-        <article className="bt-panel rounded-[24px] p-5 flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px]">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-['Bebas_Neue'] text-[18px] tracking-[0.22em] text-white uppercase">
-              ⚠️ Alertas de stock
-            </h2>
-            <button className="rounded-full border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280]">
-              Gestionar →
-            </button>
-          </div>
-
-          <div className="flex-1 flex items-center justify-center rounded-[18px] border border-[#222222] bg-[#0F0F0F] px-4">
-            <label className="flex items-center gap-3 cursor-default">
-              <input
-                type="checkbox"
-                checked={lowStockCount === 0}
-                readOnly
-                className="h-4 w-4 rounded border-[#333333] bg-[#242424] accent-[#2ECC71] pointer-events-none"
-              />
-              <span
-                className={`text-sm font-semibold ${lowStockCount === 0 ? "text-[#2ECC71]" : "text-[#E8621A]"}`}
+        {/* ALERTAS DE STOCK */}
+        <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px] pt-4 pb-4">
+          <div className="w-[88%] mx-auto flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-[20px] font-[900] uppercase text-white tracking-tight"
+                style={{
+                  fontFamily: "Arial, sans-serif",
+                  transform: "scale(0.9, 1.1)",
+                  transformOrigin: "left center",
+                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
+                }}
               >
-                {lowStockCount === 0
-                  ? "Todo en orden"
-                  : `${lowStockCount} alertas de stock`}
-              </span>
-            </label>
+                ⚠️ Alertas de stock
+              </h2>
+              <button className="rounded-md border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280] hover:text-white">
+                Gestionar →
+              </button>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <label className="flex items-center gap-3 cursor-default">
+                <input
+                  type="checkbox"
+                  checked={lowStockCount === 0}
+                  readOnly
+                  className="h-4 w-4 rounded border-[#333333] bg-[#242424] accent-[#2ECC71] pointer-events-none"
+                />
+                <span
+                  className={`text-[13px] font-semibold ${lowStockCount === 0 ? "text-[#2ECC71]" : "text-[#E8621A]"}`}
+                >
+                  {lowStockCount === 0
+                    ? "Todo en orden"
+                    : `${lowStockCount} alertas de stock`}
+                </span>
+              </label>
+            </div>
           </div>
         </article>
       </section>

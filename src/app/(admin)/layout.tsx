@@ -1,10 +1,14 @@
+// components/shared/AppShell.tsx
 import type { ReactNode } from "react";
-import AppShell from "../../components/shared/AppShell";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return <AppShell>{children}</AppShell>;
+export default function AppShell({ children }: { children: ReactNode }) {
+  return (
+    /* IMPORTANTE: Aquí quitamos el <Sidebar /> y el contenedor flex extra.
+       Dejamos solo el contenedor del contenido para que el Layout Global
+       se encargue de la barra lateral.
+    */
+    <div className="w-full min-h-screen">
+      {children}
+    </div>
+  );
 }

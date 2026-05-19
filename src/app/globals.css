@@ -140,9 +140,9 @@
 
   .bt-panel {
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 1.5rem !important;
+    border-radius: 22px !important; /* Mantenemos tus bordes redondeados */
     background: rgba(16, 16, 16, 0.92) !important;
-    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22); /* Sombra según tu mockup */
     backdrop-filter: blur(8px);
   }
 
@@ -156,11 +156,11 @@
     );
   }
 
-/* RECALIBRACIÓN: UN PELÍN MÁS CLARO PARA CALCAR EL MOCKUP */
+  /* RECALIBRACIÓN: UN PELÍN MÁS CLARO PARA CALCAR EL MOCKUP */
   .bt-panel-charcoal {
-    border: 1px solid #333333 !important;     /* <--- Contorno un pelín más visible */
+    border: 1px solid #333333 !important; /* <--- Contorno un pelín más visible */
     border-radius: 1.5rem !important;
-    background: #141414 !important;         
+    background: #141414 !important;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(8px);
   }
