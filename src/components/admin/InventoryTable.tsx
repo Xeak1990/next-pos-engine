@@ -39,25 +39,20 @@ function matchesBranch(item: InventoryItem, branchId: (typeof branchButtons)[num
   if (branchId === "centro-xalapa") {
     return normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico");
   }
-
   if (branchId === "galeria-veracruz") {
     return normalizedStore.includes("galeria veracruz") || normalizedStore.includes("veracruz");
   }
-
   return normalizedStore.includes("plaza crystal") || normalizedStore.includes("plaza");
 }
 
 function getBranchIdFromStore(storeName: string, storeLocation: string) {
   const normalizedStore = normalizeString(`${storeName} ${storeLocation}`);
-
   if (normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico")) {
     return "centro-xalapa";
   }
-
   if (normalizedStore.includes("galeria veracruz") || normalizedStore.includes("veracruz")) {
     return "galeria-veracruz";
   }
-
   return "plaza-crystal";
 }
 
@@ -73,14 +68,12 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     const fetchUser = async () => {
       try {
         const response = await fetch("/api/auth/me");
-        if (!response.ok) {
-          return;
-        }
-
+        if (!response.ok) return;
         const data = await response.json();
         setUser({ role: data.role, storeId: data.storeId });
 
-        if (data.storeId) {
+        // Si es MANAGER y tiene storeId, selecciona su sucursal por defecto
+        if (data.role === "MANAGER" && data.storeId) {
           const scopedItem = initialData.find((item) => item.storeId === data.storeId);
           if (scopedItem) {
             setSelectedBranch(getBranchIdFromStore(scopedItem.storeName, scopedItem.storeLocation));
@@ -90,27 +83,35 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
         console.error("Error fetching user:", error);
       }
     };
-
     fetchUser();
   }, [initialData]);
 
-  const userScopedInventory =
-    user?.role === "MANAGER" && user.storeId
-      ? inventory.filter((item) => item.storeId === user.storeId)
-      : inventory;
-
-  const visibleInventory = userScopedInventory.filter((item) => matchesBranch(item, selectedBranch));
+  // Solo los ADMIN pueden modificar stock
   const canModifyStock = user?.role === "ADMIN";
 
-  const handleAdjust = (id: string, amount: number) => {
-    const previousInventory = inventory;
+  // Para MANAGER: puede ver cualquier sucursal, pero no editar
+  // Para CASHIER: normalmente tiene storeId fijo; aquí decidimos si restringir
+  // Por simplicidad, permitimos a MANAGER cambiar de sucursal; CASHIER se queda con la suya
+  const canChangeBranch = user?.role === "ADMIN" || user?.role === "MANAGER";
 
+  // Filtro: si el usuario tiene storeId y NO puede cambiar de sucursal (CASHIER), forzamos su sucursal.
+  // En caso contrario (ADMIN o MANAGER con permiso), mostramos la sucursal seleccionada por el usuario.
+  const visibleInventory = inventory.filter((item) => {
+    if (!canChangeBranch && user?.storeId) {
+      return item.storeId === user.storeId;
+    }
+    return matchesBranch(item, selectedBranch);
+  });
+
+  const handleAdjust = (id: string, amount: number) => {
+    if (!canModifyStock) return;
+
+    const previousInventory = inventory;
     setInventory((current) =>
       current.map((item) =>
         item.id === id ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item,
       ),
     );
-
     startTransition(async () => {
       const result = await updateStock(id, amount);
       if (!result.success) {
@@ -126,18 +127,30 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
         <div className="grid gap-4 md:grid-cols-3">
           {branchButtons.map((branch) => {
             const isActive = selectedBranch === branch.id;
+            // Si el usuario es CASHIER y no puede cambiar, deshabilitamos todos los botones excepto su sucursal (si la encontramos)
+            let disabled = false;
+            if (!canChangeBranch && user?.storeId) {
+              // CASHIER: solo permite su propia sucursal; averiguamos cuál es
+              const ownStoreItem = inventory.find((item) => item.storeId === user.storeId);
+              if (ownStoreItem) {
+                const ownBranchId = getBranchIdFromStore(ownStoreItem.storeName, ownStoreItem.storeLocation);
+                disabled = branch.id !== ownBranchId;
+              } else {
+                disabled = true;
+              }
+            }
 
             return (
               <button
                 key={branch.id}
                 type="button"
                 onClick={() => setSelectedBranch(branch.id)}
+                disabled={disabled}
                 className={
                   isActive
                     ? "rounded-[12px] border border-[#E8621A] bg-[#E8621A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[0_12px_28px_rgba(232,98,26,0.18)]"
                     : "rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#CBD5E1] hover:border-[#E8621A] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                 }
-                disabled={Boolean(user?.storeId && !canModifyStock && selectedBranch !== branch.id)}
               >
                 {branch.label}
               </button>
@@ -212,14 +225,13 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                         </>
                       ) : (
                         <span className="px-3 py-2 text-xs uppercase tracking-[0.18em] text-[#6B7280]">
-                          --
+                          Solo consulta
                         </span>
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
-
               {visibleInventory.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-14 text-center text-sm text-[#9CA3AF]">

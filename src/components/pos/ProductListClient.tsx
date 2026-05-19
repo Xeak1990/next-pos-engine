@@ -57,6 +57,10 @@ export default function ProductListClient({
         ? initialStoreLocation
         : storeOptions[0] || "";
 
+  // Determinar si el usuario puede editar (agregar productos) en la sucursal activa
+  const hasFixedStore = Boolean(initialStoreLocation);
+  const canEdit = !hasFixedStore || activeStore === initialStoreLocation;
+
   const selectedStoreNormalized = normalizeString(activeStore);
   const selectedCategoryNormalized = normalizeString(selectedCategory);
   const normalizedSearch = normalizeString(searchTerm);
@@ -93,8 +97,7 @@ export default function ProductListClient({
             <select
               value={activeStore}
               onChange={(event) => setSelectedStore(event.target.value)}
-              disabled={Boolean(initialStoreLocation)}
-              className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm font-semibold text-[#E8621A] disabled:cursor-not-allowed disabled:text-[#D1D5DB]"
+              className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm font-semibold text-[#E8621A]"
             >
               {storeOptions.map((store) => (
                 <option key={store} value={store} className="bg-[#1A1A1A] text-white">
@@ -102,9 +105,14 @@ export default function ProductListClient({
                 </option>
               ))}
             </select>
-            {initialStoreLocation && (
-              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#C9D8EA]">
-                Sucursal bloqueada para {initialStoreName || "usuario operativo"}
+            {hasFixedStore && !canEdit && (
+              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#E8621A]">
+                ⚠️ Modo consulta: solo puedes vender en {initialStoreName ?? "tu sucursal"}
+              </p>
+            )}
+            {hasFixedStore && canEdit && (
+              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#2ECC71]">
+                ✅ Venta activa en tu sucursal asignada
               </p>
             )}
           </div>
@@ -202,25 +210,31 @@ export default function ProductListClient({
                   </div>
 
                   {product.stock > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addItem(
-                          {
-                            variantId: product.id,
-                            name: product.name,
-                            size: product.size,
-                            price: Number(product.price),
-                            quantity: 1,
-                            stockAvailable: product.stock,
-                          },
-                          product.stock,
-                        )
-                      }
-                      className="bt-button-primary px-5 py-3 text-xs"
-                    >
-                      Agregar
-                    </button>
+                    canEdit ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          addItem(
+                            {
+                              variantId: product.id,
+                              name: product.name,
+                              size: product.size,
+                              price: Number(product.price),
+                              quantity: 1,
+                              stockAvailable: product.stock,
+                            },
+                            product.stock,
+                          )
+                        }
+                        className="bt-button-primary px-5 py-3 text-xs"
+                      >
+                        Agregar
+                      </button>
+                    ) : (
+                      <div className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-4 py-3 text-[11px] uppercase tracking-[0.22em] text-[#6B7280]">
+                        Solo consulta
+                      </div>
+                    )
                   ) : (
                     <div className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-4 py-3 text-[11px] uppercase tracking-[0.22em] text-[#6B7280]">
                       Sin stock
