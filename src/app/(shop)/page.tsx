@@ -1,79 +1,99 @@
 import { prisma } from "../../lib/prisma";
-import ProductCard from "../../components/shop/ProductCard";
+import CatalogClient from "./CatalogClient";
 import { Product } from "../../types";
-import { Prisma } from "@prisma/client"; // Importamos Prisma para usar ProductGetPayload
+import { Prisma } from "@prisma/client";
 
-// Definición de tipo para la consulta con relaciones (3FN) [cite: 185, 208]
 type ProductWithRelations = Prisma.ProductGetPayload<{
   include: {
     variants: {
       include: {
-        inventory: {
-          include: {
-            store: true;
-          };
-        };
+        inventory: { include: { store: true } };
       };
     };
   };
 }>;
 
+// ✅ Definir tipo para filterOptions
+interface FilterOptions {
+  stores: string[];
+  categories: string[];
+  sizes: string[];
+}
+
 export default async function ShopPage() {
-  // RF08: Consulta de disponibilidad en tiempo real [cite: 74, 87]
-  const productsFromDb = await prisma.product.findMany({
-    include: {
-      variants: {
-        include: {
-          inventory: {
-            include: {
-              store: true,
-            },
+  let serializedProducts: Product[] = [];
+  let filterOptions: FilterOptions = { stores: [], categories: [], sizes: [] }; // ✅ tipado explícito
+
+  try {
+    const productsFromDb = (await prisma.product.findMany({
+      include: {
+        variants: {
+          include: {
+            inventory: { include: { store: true } },
           },
         },
       },
-    },
-  }) as ProductWithRelations[];
+    })) as ProductWithRelations[];
 
-  // Mapeo a la interfaz del sistema para cumplir con RF01 y RF08 [cite: 228]
-  const serializedProducts: Product[] = productsFromDb.map((p) => ({
-    id: p.id,
-    name: p.name,
-    brand: p.brand,
-    category: p.category,
-    variants: p.variants.map((v) => ({
-      id: v.id,
-      sku: v.sku,
-      size: v.size,
-      color: v.color,
-      price: v.price.toString(), // Serialización para evitar errores de Decimal [cite: 170, 200]
-      inventory: v.inventory.map((i) => ({
-        quantity: i.quantity,
-        store: {
-          id: i.store.id,
-          name: i.store.name,
-          location: i.store.location,
-        },
+    serializedProducts = productsFromDb.map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      variants: p.variants.map((v) => ({
+        id: v.id,
+        sku: v.sku,
+        size: v.size,
+        color: v.color,
+        price: v.price.toString(),
+        inventory: v.inventory.map((i) => ({
+          quantity: i.quantity,
+          store: {
+            id: i.store.id,
+            name: i.store.name,
+            location: i.store.location,
+          },
+        })),
       })),
-    })),
-  }));
+    }));
+
+    const storesSet = new Set<string>();
+    const categoriesSet = new Set<string>();
+    const sizesSet = new Set<string>();
+
+    for (const product of serializedProducts) {
+      categoriesSet.add(product.category);
+      for (const variant of product.variants) {
+        sizesSet.add(variant.size);
+        for (const inv of variant.inventory) {
+          storesSet.add(inv.store.name);
+        }
+      }
+    }
+
+    filterOptions = {
+      stores: Array.from(storesSet).sort(),
+      categories: Array.from(categoriesSet).sort(),
+      sizes: Array.from(sizesSet).sort((a, b) => {
+        const an = parseInt(a);
+        const bn = parseInt(b);
+        if (!isNaN(an) && !isNaN(bn)) return an - bn;
+        return a.localeCompare(b);
+      }),
+    };
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
 
   return (
-    <main className="min-h-screen bg-[#0F0F0F] px-6 py-8 text-white">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-10">
-          <p className="text-sm uppercase tracking-[0.36em] text-[#94A3B8]">Catalogo</p>
-          <h1 className="mt-3 text-5xl text-white">Ben Tenison</h1>
-          <p className="mt-3 text-sm text-[#9CA3AF]">
-            Consulta disponibilidad y precios por variante en tiempo real.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {serializedProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </div>
-    </main>
+    <div className="mx-auto max-w-7xl px-6 py-8 text-white">
+      {" "}
+      {/* ← sin min-h-screen */}
+      <header className="mb-10">...</header>
+      <CatalogClient
+        initialProducts={serializedProducts}
+        filterOptions={filterOptions}
+      />
+    </div>
   );
 }

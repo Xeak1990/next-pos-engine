@@ -1,6 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
 
-/* De vuelta a las directivas estándar que Next.js sí puede compilar */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -20,6 +19,7 @@
   --bt-muted: #9ca3af;
 }
 
+/* ========== BASE ========== */
 @layer base {
   * {
     border-color: var(--bt-border);
@@ -27,6 +27,7 @@
 
   html {
     background: var(--bt-dark);
+    overflow-y: auto; /* solo scroll del navegador */
   }
 
   body {
@@ -36,17 +37,15 @@
     font-family: "DM Sans", sans-serif;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+    overflow-y: auto; /* scroll del navegador */
   }
 
-  /* REGLA LIMPIA Y DIRECTA PARA ELIMINAR EL AZUL SINFONÍA DE LOS LINKS */
   a {
     color: inherit !important;
     text-decoration: none !important;
   }
 
-  h1,
-  h2,
-  h3 {
+  h1, h2, h3 {
     font-family: "Bebas Neue", sans-serif;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -57,115 +56,69 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
-    transition:
-      transform 200ms ease,
-      background-color 200ms ease,
-      border-color 200ms ease,
-      color 200ms ease,
-      box-shadow 200ms ease,
-      opacity 200ms ease;
+    transition: transform 200ms ease, background-color 200ms ease, border-color 200ms ease,
+                color 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
   }
 
   button:not(:disabled):active {
     transform: scale(0.97);
   }
 
-  input,
-  select,
-  textarea {
+  input, select, textarea {
     border-radius: 8px;
     border: 1px solid var(--bt-border);
     background: var(--bt-surface-hover);
     color: var(--bt-text);
-    transition:
-      border-color 140ms ease,
-      box-shadow 140ms ease,
-      background-color 140ms ease;
+    transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
   }
 
-  input::placeholder,
-  textarea::placeholder {
+  input::placeholder, textarea::placeholder {
     color: #6b7280;
   }
 
-  input:focus,
-  select:focus,
-  textarea:focus {
+  input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--bt-orange);
     box-shadow: 0 0 0 3px rgba(232, 98, 26, 0.16);
   }
 
-  .font-bebas {
-    font-family: "Bebas Neue", sans-serif;
-  }
-
-  .font-sans {
-    font-family: "DM Sans", sans-serif;
-  }
-
-  .font-mono {
-    font-family: "JetBrains Mono", monospace;
-  }
+  .font-bebas { font-family: "Bebas Neue", sans-serif; }
+  .font-sans { font-family: "DM Sans", sans-serif; }
+  .font-mono { font-family: "JetBrains Mono", monospace; }
 }
 
+/* ========== COMPONENTES ========== */
 @layer components {
-  .bg-bt-dark {
-    background-color: var(--bt-dark);
-  }
-
-  .bg-bt-surface {
-    background-color: var(--bt-surface);
-  }
-
-  .bg-bt-navy {
-    background-color: var(--bt-blue);
-  }
-
-  .text-bt-orange {
-    color: var(--bt-orange);
-  }
-
-  .text-bt-success {
-    color: var(--bt-success);
-  }
-
-  .text-bt-error {
-    color: var(--bt-danger);
-  }
-
-  .text-bt-light {
-    color: var(--bt-text);
-  }
+  .bg-bt-dark { background-color: var(--bt-dark); }
+  .bg-bt-surface { background-color: var(--bt-surface); }
+  .bg-bt-navy { background-color: var(--bt-blue); }
+  .text-bt-orange { color: var(--bt-orange); }
+  .text-bt-success { color: var(--bt-success); }
+  .text-bt-error { color: var(--bt-danger); }
+  .text-bt-light { color: var(--bt-text); }
 
   .bt-panel {
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 22px !important; /* Mantenemos tus bordes redondeados */
+    border-radius: 22px !important;
     background: rgba(16, 16, 16, 0.92) !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22); /* Sombra según tu mockup */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
     backdrop-filter: blur(8px);
   }
 
   .bt-panel-blue {
     border: 1px solid rgba(26, 58, 95, 0.72);
     border-radius: 12px;
-    background: linear-gradient(
-      180deg,
-      rgba(26, 58, 95, 0.28),
-      rgba(15, 15, 15, 0.88)
-    );
+    background: linear-gradient(180deg, rgba(26, 58, 95, 0.28), rgba(15, 15, 15, 0.88));
   }
 
-  /* RECALIBRACIÓN: UN PELÍN MÁS CLARO PARA CALCAR EL MOCKUP */
   .bt-panel-charcoal {
-    border: 1px solid #333333 !important; /* <--- Contorno un pelín más visible */
+    border: 1px solid #333333 !important;
     border-radius: 1.5rem !important;
     background: #141414 !important;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(8px);
   }
 
-  /* SISTEMA DE BOTONES COMPORTAMIENTO MOCKUP (ALTURA OPTIMIZADA CON DISPLAY INTEGRADO) */
   .bt-button-primary {
     display: inline-flex !important;
     align-items: center;
@@ -177,30 +130,17 @@
     border: 1px solid transparent;
     background: var(--bt-orange);
     color: #ffffff !important;
-    text-decoration: none !important;
     font-weight: 700;
     letter-spacing: 0.15em;
     line-height: 1 !important;
     box-shadow: 0 8px 24px rgba(232, 98, 26, 0.2);
   }
+  .bt-button-primary:hover { background: #f07330; }
 
-  .bt-button-primary:hover {
-    background: #f07330;
-  }
-
-  /* --- INSTANCIA / EXTENSIÓN CONTROLADA DEL BOTÓN --- */
   .bt-button-primary.bt-button-login {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    min-height: auto !important;
-
-    /* MODIFICA ESTOS VALORES A TU GUSTO */
-    padding: 16px 16px !important; /* <- Altura / Grosor del botón */
-    font-size: 14px !important; /* <- Tamaño de la letra */
-
-    /* CONTROL DE NEGRITAS */
-    font-weight: 900 !important; /* <- Puedes usar 700 (bold), 800 (extra-bold) o 900 (black) */
+    padding: 16px 16px !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
   }
 
   .bt-button-secondary {
@@ -212,16 +152,12 @@
     border: 1px solid rgba(26, 58, 95, 0.9);
     background: rgba(26, 58, 95, 0.2);
     color: #ffffff !important;
-    text-decoration: none !important;
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     line-height: 1 !important;
   }
-
-  .bt-button-secondary:hover {
-    background: rgba(26, 58, 95, 0.34);
-  }
+  .bt-button-secondary:hover { background: rgba(26, 58, 95, 0.34); }
 
   .bt-button-ghost {
     display: inline-flex !important;
@@ -230,13 +166,11 @@
     border: 1px solid var(--bt-border);
     background: transparent;
     color: #d1d5db !important;
-    text-decoration: none !important;
     font-weight: 600;
     letter-spacing: 0.08em;
     padding: 0.85rem 1.5rem !important;
     line-height: 1 !important;
   }
-
   .bt-button-ghost:hover {
     background: rgba(255, 255, 255, 0.04);
     color: #ffffff !important;
@@ -261,62 +195,35 @@
     width: 100%;
     border-collapse: collapse;
   }
-
-  .bt-table thead {
-    background: var(--bt-blue-soft);
-  }
-
+  .bt-table thead { background: var(--bt-blue-soft); }
   .bt-table th {
     padding: 0.95rem 1.25rem;
-    text-align: left;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: #cbd5e1;
   }
-
   .bt-table td {
     padding: 1rem 1.25rem;
     font-size: 0.92rem;
     color: #e5e7eb;
   }
-
   .bt-table tbody tr {
     border-top: 1px solid rgba(51, 51, 51, 0.9);
     transition: background-color 140ms ease;
   }
-
-  .bt-table tbody tr:hover {
-    background: var(--bt-surface-hover);
-  }
+  .bt-table tbody tr:hover { background: var(--bt-surface-hover); }
 
   .bt-grid-glow {
     background-color: var(--bt-dark);
     background-image:
-      radial-gradient(
-        circle at 12% 16%,
-        rgba(232, 98, 26, 0.18),
-        transparent 0 24%
-      ),
-      radial-gradient(
-        circle at 88% 12%,
-        rgba(26, 58, 95, 0.28),
-        transparent 0 26%
-      ),
-      radial-gradient(
-        circle at 50% 100%,
-        rgba(232, 98, 26, 0.08),
-        transparent 0 32%
-      ),
+      radial-gradient(circle at 12% 16%, rgba(232, 98, 26, 0.18), transparent 0 24%),
+      radial-gradient(circle at 88% 12%, rgba(26, 58, 95, 0.28), transparent 0 26%),
+      radial-gradient(circle at 50% 100%, rgba(232, 98, 26, 0.08), transparent 0 32%),
       linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size:
-      auto,
-      auto,
-      auto,
-      32px 32px,
-      32px 32px;
+    background-size: auto, auto, auto, 32px 32px, 32px 32px;
   }
 
   .bt-status-badge {
@@ -330,7 +237,6 @@
     letter-spacing: 0.16em;
     text-transform: uppercase;
   }
-
   .bt-status-badge::before {
     content: "";
     width: 0.45rem;
@@ -340,12 +246,10 @@
     box-shadow: 0 0 0 4px currentColor;
     opacity: 0.25;
   }
-
   .bt-status-active {
     background: rgba(46, 204, 113, 0.12);
     color: var(--bt-success);
   }
-
   .bt-status-inactive {
     background: rgba(255, 255, 255, 0.06);
     color: #d1d5db;
@@ -355,48 +259,61 @@
     scrollbar-width: thin;
     scrollbar-color: var(--bt-border) transparent;
   }
-
   .custom-scrollbar::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
     border-radius: 999px;
     background: var(--bt-border);
     background-clip: padding-box;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #4b5563;
     background-clip: padding-box;
   }
 }
 
+/* ========== UTILIDADES ADICIONALES ========== */
 .report-print-area {
   padding: 0;
 }
 
+/* ========== ELIMINACIÓN DEFINITIVA DEL DOBLE SCROLL ========== */
+/* Solo el body debe tener scroll vertical; todos los demás elementos lo desactivan */
+* {
+  overflow-y: visible !important;
+}
+
+body, html {
+  overflow-y: auto !important;
+}
+
+/* Excepciones para scroll horizontal (tablas, elementos con overflow-x) */
+.bt-table-shell, .custom-scrollbar, .overflow-x-auto {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+/* Forzar visibilidad en contenedores comunes */
+main, section, div, article, aside, .bt-panel, .flex-1, .min-h-screen, .h-screen {
+  overflow-y: visible !important;
+}
+
+/* ========== IMPRESIÓN ========== */
 @media print {
   body {
     background: #ffffff !important;
     color: #000000 !important;
   }
-
   .no-print,
-  header,
-  nav,
-  footer,
-  button,
-  a[href] {
+  header, nav, footer, button, a[href] {
     display: none !important;
   }
-
   .report-print-area {
     background: #ffffff !important;
     color: #000000 !important;
@@ -404,17 +321,14 @@
     min-height: auto !important;
     padding: 0 !important;
   }
-
   .report-print-area * {
     color: #000000 !important;
     background: transparent !important;
     border-color: #000000 !important;
   }
-
   .report-print-area table {
     border-collapse: collapse !important;
   }
-
   .report-print-area th,
   .report-print-area td {
     color: #000000 !important;

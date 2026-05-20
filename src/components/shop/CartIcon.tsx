@@ -16,7 +16,9 @@ export default function CartIcon() {
   return (
     <Link href="/cart" className="relative">
       <svg
-        className="h-6 w-6 text-white hover:text-[#E8621A] transition-colors"
+        width="24"
+        height="24"
+        className="text-white hover:text-[#E8621A] transition-colors"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
