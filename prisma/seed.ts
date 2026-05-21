@@ -1,14 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Decimal } from "decimal.js";
-import pg from "pg";
-import bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -149,16 +142,16 @@ async function main() {
               sku: variant.sku,
               size: variant.size,
               color: variant.color,
-              price: new Decimal(variant.price),
+              price: variant.price, // Prisma convierte el número a Decimal automáticamente
               inventory: {
                 create: [
                   {
                     storeId: centroStore.id,
-                    quantity: Math.floor(Math.random() * 20) + 5, // Stock aleatorio 5-25
+                    quantity: Math.floor(Math.random() * 20) + 5,
                   },
                   {
                     storeId: plazaStore.id,
-                    quantity: Math.floor(Math.random() * 20) + 5, // Stock aleatorio 5-25
+                    quantity: Math.floor(Math.random() * 20) + 5,
                   },
                 ],
               },
@@ -171,11 +164,27 @@ async function main() {
     console.log(`Producto creado/verificado: ${product.name} (${product.brand})`);
   }
 
+  // Crear cliente demo (solo una vez)
+  const demoCustomer = await prisma.customer.upsert({
+    where: { email: "cliente@bentenison.mx" },
+    update: {},
+    create: {
+      email: "cliente@bentenison.mx",
+      password: await hashPassword("cliente123"),
+      name: "Cliente Demo",
+      phone: "555-1234",
+      address: "Av. Principal 123",
+      city: "Xalapa",
+      postalCode: "91000",
+    },
+  });
+  console.log("Cliente demo creado:", demoCustomer.email);
+
   console.log("Seed completado con éxito 👟");
 }
 
 main()
-  .then(async () => { await prisma.$disconnect(); })
+  .then(async () => await prisma.$disconnect())
   .catch(async (e) => {
     console.error(e);
     await prisma.$disconnect();

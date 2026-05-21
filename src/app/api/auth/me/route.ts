@@ -9,5 +9,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  return NextResponse.json(authPayload);
+  // Envolver el payload en una propiedad "customer"
+  return NextResponse.json({ customer: authPayload });
 }

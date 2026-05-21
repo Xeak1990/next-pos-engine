@@ -5,10 +5,11 @@
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["schemaEngineDriverAdapters"]
+  previewFeatures = ["driverAdapters"]  
 }
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Store {
@@ -103,6 +104,8 @@ model Order {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   items          OrderItem[]
+  customerId     String?
+  customer       Customer?   @relation(fields: [customerId], references: [id])
 }
 
 model OrderItem {
@@ -114,4 +117,18 @@ model OrderItem {
   price     Float
   quantity  Int
   size      String?
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  address   String?
+  city      String?
+  postalCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCartWeb } from "../../../context/CartContextWeb";
 import { formatCurrency } from "../../../lib/utils";
@@ -9,6 +9,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartWeb();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [loadingCustomer, setLoadingCustomer] = useState(true);
   const [formData, setFormData] = useState({
     customerName: "",
     customerEmail: "",
@@ -16,15 +18,38 @@ export default function CheckoutPage() {
     address: "",
     city: "",
     postalCode: "",
-    paymentMethod: "cash", // cash o card
+    paymentMethod: "cash",
   });
+
+  useEffect(() => {
+    fetch("/api/auth/customer/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.customer) {
+          setCustomerId(data.customer.id);
+          setFormData({
+            customerName: data.customer.name || "",
+            customerEmail: data.customer.email || "",
+            customerPhone: data.customer.phone || "",
+            address: data.customer.address || "",
+            city: data.customer.city || "",
+            postalCode: data.customer.postalCode || "",
+            paymentMethod: "cash",
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCustomer(false));
+  }, []);
 
   if (items.length === 0) {
     router.push("/cart");
     return null;
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -46,6 +71,7 @@ export default function CheckoutPage() {
           })),
           total: totalPrice,
           customer: formData,
+          customerId,
         }),
       });
 
@@ -61,6 +87,14 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (loadingCustomer) {
+    return (
+      <div className="text-white text-center py-8">
+        Cargando datos del cliente...
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -186,7 +220,10 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-bold text-white mb-4">Resumen</h2>
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.productId} className="flex justify-between text-sm">
+              <div
+                key={item.productId}
+                className="flex justify-between text-sm"
+              >
                 <span>
                   {item.name} x{item.quantity}
                 </span>

@@ -14,7 +14,7 @@ interface OrderItemInput {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, total, customer } = body as {
+    const { items, total, customer, customerId } = body as {
       items: OrderItemInput[];
       total: number;
       customer: {
@@ -26,17 +26,25 @@ export async function POST(request: NextRequest) {
         postalCode: string;
         paymentMethod: string;
       };
+      customerId?: string | null;
     };
 
     if (!items || items.length === 0) {
-      return NextResponse.json({ error: "El carrito está vacío" }, { status: 400 });
+      return NextResponse.json(
+        { error: "El carrito está vacío" },
+        { status: 400 },
+      );
     }
     if (!customer.customerName || !customer.customerEmail) {
-      return NextResponse.json({ error: "Datos de cliente incompletos" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Datos de cliente incompletos" },
+        { status: 400 },
+      );
     }
 
     const order = await prisma.order.create({
       data: {
+        customerId: customerId || null,
         customerName: customer.customerName,
         customerEmail: customer.customerEmail,
         customerPhone: customer.customerPhone ?? null,
@@ -62,7 +70,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ orderId: order.id }, { status: 201 });
   } catch (error) {
     console.error("Error creando orden:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 },
+    );
   }
 }
 

@@ -353,7 +353,12 @@ const navigationSections: NavSection[] = [
     title: "Administración",
     items: [
       { name: "Usuarios", href: "/users", icon: UsersIcon, roles: ["ADMIN"] },
-      { name: "Pedidos", href: "/orders", icon: OrdersIcon, roles: ["ADMIN", "MANAGER"] },
+      {
+        name: "Pedidos",
+        href: "/orders",
+        icon: OrdersIcon,
+        roles: ["ADMIN", "MANAGER"],
+      },
       {
         name: "Reportes",
         href: "/reports",
@@ -412,12 +417,15 @@ export default function Navbar() {
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      window.location.href = "/login";
     } catch (error) {
-      console.error("Error logging out:", error);
+      console.error("Error en logout:", error);
+    } finally {
+      // Eliminar cookies manualmente como respaldo
+      document.cookie = "bt_auth=; path=/; max-age=0";
+      document.cookie = "bt_customer_token=; path=/; max-age=0";
+      window.location.href = "/login";
     }
   };
-
   const visibleSections = user
     ? navigationSections
         .map((section) => ({

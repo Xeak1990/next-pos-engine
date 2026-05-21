@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const demoUsers = [
@@ -20,6 +21,12 @@ const demoUsers = [
     role: "CASHIER",
     email: "cajero@bentenison.mx",
     password: "1234",
+  },
+  {
+    label: "CLIENTE", // nueva cuenta demo
+    role: "CUSTOMER",
+    email: "cliente@bentenison.mx",
+    password: "cliente123",
   },
 ];
 
@@ -52,7 +59,12 @@ export default function LoginScreen() {
       }
 
       const role = data.user?.role as string | undefined;
-      const destination = role === "CASHIER" ? "/terminal" : "/dashboard";
+      const destination =
+        role === "CASHIER"
+          ? "/terminal"
+          : role === "CUSTOMER"
+            ? "/"
+            : "/dashboard";
       window.location.href = destination;
     } catch (submitError) {
       console.error(submitError);
@@ -220,47 +232,60 @@ export default function LoginScreen() {
               </div>
             </form>
 
+            {/* --- ENLACE PARA CREAR CUENTA --- */}
+            <div className="w-full flex justify-center mt-4">
+              <p className="text-sm text-[#9CA3AF]">
+                ¿No tienes cuenta?{" "}
+                <Link
+                  href="/register"
+                  className="text-[#E8621A] hover:underline"
+                >
+                  Crear cuenta
+                </Link>
+              </p>
+            </div>
+
             {/* --- RECTÁNGULO CONTENEDOR PRINCIPAL DE LA SECCIÓN DEMO --- */}
-<div className="w-full max-w-[75%] mx-auto mt-[25px] rounded-[12px] border border-[#333333] bg-[#242424] p-[18px_20px]">
-  
-  {/* El título de la sección alineado con el inicio de los botones */}
-  <div className="mb-3.5 flex items-center justify-start">
-    <p className="text-[10px] uppercase tracking-[0.18em] !text-[#9CA3AF] font-semibold !font-sans">
-      CUENTAS DE DEMOSTRACIÓN (CONTRASEÑA: 1234)
-    </p>
-  </div>
+            <div className="w-full max-w-[75%] mx-auto mt-[25px] rounded-[12px] border border-[#333333] bg-[#242424] p-[18px_20px]">
+              {/* El título de la sección alineado con el inicio de los botones */}
+              <div className="mb-3.5 flex items-center justify-start">
+                <p className="text-[10px] uppercase tracking-[0.18em] !text-[#9CA3AF] font-semibold !font-sans">
+                  CUENTAS DE DEMOSTRACIÓN (CONTRASEÑA: 1234)
+                </p>
+              </div>
 
-  {/* --- LISTA DE BOTONES (Sin doble encapsulado) --- */}
-  {/* Los botones van directos, separados por un gap sutil */}
-  <div className="flex flex-col gap-[8px] w-full">
-    {demoUsers.map((demo) => (
-      <button
-        key={demo.role}
-        type="button"
-        onClick={() => handleDemoSelect(demo)}
-        className="w-full rounded-[6px] border border-[#1f1f1f] bg-[#141414] p-[12px_16px] flex flex-row items-center justify-between hover:border-[#E8621A] hover:bg-[#1a1a1a] transition-all duration-200"
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between", /* Cambiado a space-between directo */
-          alignItems: "center",
-          minHeight: "auto",
-          transform: "none",
-        }}
-      >
-        {/* LADO IZQUIERDO: Correo electrónico en gris */}
-        <span className="font-mono text-[13px] text-[#9CA3AF] tracking-wide text-left">
-          {demo.email}
-        </span>
+              {/* --- LISTA DE BOTONES (Sin doble encapsulado) --- */}
+              {/* Los botones van directos, separados por un gap sutil */}
+              <div className="flex flex-col gap-[8px] w-full">
+                {demoUsers.map((demo) => (
+                  <button
+                    key={demo.role}
+                    type="button"
+                    onClick={() => handleDemoSelect(demo)}
+                    className="w-full rounded-[6px] border border-[#1f1f1f] bg-[#141414] p-[12px_16px] flex flex-row items-center justify-between hover:border-[#E8621A] hover:bg-[#1a1a1a] transition-all duration-200"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent:
+                        "space-between" /* Cambiado a space-between directo */,
+                      alignItems: "center",
+                      minHeight: "auto",
+                      transform: "none",
+                    }}
+                  >
+                    {/* LADO IZQUIERDO: Correo electrónico en gris */}
+                    <span className="font-mono text-[13px] text-[#9CA3AF] tracking-wide text-left">
+                      {demo.email}
+                    </span>
 
-        {/* LADO DERECHO: El Rol en naranja brillante */}
-        <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#E8621A] text-right font-bebas">
-          {demo.label}
-        </span>
-      </button>
-    ))}
-  </div>
-</div>
+                    {/* LADO DERECHO: El Rol en naranja brillante */}
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#E8621A] text-right font-bebas">
+                      {demo.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
         </div>
 
