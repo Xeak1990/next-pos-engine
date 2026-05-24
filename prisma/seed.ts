@@ -20,7 +20,7 @@ async function main() {
     },
   });
 
-  const plazaStore = await prisma.store.upsert({
+  const plazaAmericasStore = await prisma.store.upsert({
     where: { name: "Plaza Américas" },
     update: {},
     create: {
@@ -29,11 +29,22 @@ async function main() {
     },
   });
 
-  console.log("Sucursales creadas:", centroStore.name, plazaStore.name);
+  // Sucursal faltante: Plaza Crystal
+  const plazaCrystalStore = await prisma.store.upsert({
+    where: { name: "Plaza Crystal" },
+    update: {},
+    create: {
+      name: "Plaza Crystal",
+      location: "Plaza Crystal, Xalapa, Ver.",
+    },
+  });
 
-  // Crear usuarios con contraseñas hasheadas
+  console.log("Sucursales creadas:", centroStore.name, plazaAmericasStore.name, plazaCrystalStore.name);
+
+  // Contraseña común
   const hashedPassword = await hashPassword("1234");
 
+  // Usuarios existentes
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@bentenison.mx" },
     update: {},
@@ -46,7 +57,7 @@ async function main() {
     },
   });
 
-  const managerUser = await prisma.user.upsert({
+  const managerCentro = await prisma.user.upsert({
     where: { email: "gerente@bentenison.mx" },
     update: {},
     create: {
@@ -59,7 +70,7 @@ async function main() {
     },
   });
 
-  const cashierUser = await prisma.user.upsert({
+  const cashierPlaza = await prisma.user.upsert({
     where: { email: "cajero@bentenison.mx" },
     update: {},
     create: {
@@ -67,14 +78,55 @@ async function main() {
       email: "cajero@bentenison.mx",
       password: hashedPassword,
       role: "CASHIER",
-      storeId: plazaStore.id,
+      storeId: plazaAmericasStore.id,
       isActive: true,
     },
   });
 
-  console.log("Usuarios creados:", adminUser.name, managerUser.name, cashierUser.name);
+  // Nuevo personal para Plaza Crystal
+  const managerCrystal = await prisma.user.upsert({
+    where: { email: "gerente.crystal@bentenison.mx" },
+    update: {},
+    create: {
+      name: "Gerente Crystal",
+      email: "gerente.crystal@bentenison.mx",
+      password: hashedPassword,
+      role: "MANAGER",
+      storeId: plazaCrystalStore.id,
+      isActive: true,
+    },
+  });
 
-  // Productos con variantes y stock distribuido
+  const cashierCrystal = await prisma.user.upsert({
+    where: { email: "cajero.crystal@bentenison.mx" },
+    update: {},
+    create: {
+      name: "Cajero Crystal",
+      email: "cajero.crystal@bentenison.mx",
+      password: hashedPassword,
+      role: "CASHIER",
+      storeId: plazaCrystalStore.id,
+      isActive: true,
+    },
+  });
+
+  // Un cajero adicional para Centro Xalapa
+  const cashierCentro2 = await prisma.user.upsert({
+    where: { email: "cajero.centro2@bentenison.mx" },
+    update: {},
+    create: {
+      name: "Cajero Centro",
+      email: "cajero.centro2@bentenison.mx",
+      password: hashedPassword,
+      role: "CASHIER",
+      storeId: centroStore.id,
+      isActive: true,
+    },
+  });
+
+  console.log("Usuarios creados:", adminUser.name, managerCentro.name, cashierPlaza.name, managerCrystal.name, cashierCrystal.name, cashierCentro2.name);
+
+  // Productos con variantes (algunas incompletas) y precios variables
   const products = [
     {
       name: "Dunk Low",
@@ -87,6 +139,7 @@ async function main() {
         { sku: "NIKE-DUNK-BLU-27", size: "27", color: "Azul/Blanco", price: 2499.0 },
         { sku: "NIKE-DUNK-BLU-28", size: "28", color: "Azul/Blanco", price: 2499.0 },
       ],
+      inventoryDistribution: "all", // disponible en todas las sucursales
     },
     {
       name: "Stan Smith",
@@ -99,6 +152,7 @@ async function main() {
         { sku: "ADIDAS-STAN-WHT-27", size: "27", color: "Blanco/Verde", price: 2199.0 },
         { sku: "ADIDAS-STAN-WHT-28", size: "28", color: "Blanco/Verde", price: 2199.0 },
       ],
+      inventoryDistribution: "all",
     },
     {
       name: "574",
@@ -111,6 +165,7 @@ async function main() {
         { sku: "NB-574-GRY-27", size: "27", color: "Gris/Naranja", price: 2299.0 },
         { sku: "NB-574-GRY-28", size: "28", color: "Gris/Naranja", price: 2299.0 },
       ],
+      inventoryDistribution: "all",
     },
     {
       name: "RS-X",
@@ -123,12 +178,84 @@ async function main() {
         { sku: "PUMA-RSX-BLK-27", size: "27", color: "Negro/Plateado", price: 2399.0 },
         { sku: "PUMA-RSX-BLK-28", size: "28", color: "Negro/Plateado", price: 2399.0 },
       ],
+      inventoryDistribution: "all",
+    },
+    // Nuevos productos con tallas faltantes y precios distintos
+    {
+      name: "Air Force 1",
+      brand: "Nike",
+      description: "Clásico blanco",
+      variants: [
+        { sku: "NIKE-AF1-WHT-24", size: "24", color: "Blanco/Blanco", price: 2899.0 },
+        { sku: "NIKE-AF1-WHT-25", size: "25", color: "Blanco/Blanco", price: 2899.0 },
+        { sku: "NIKE-AF1-WHT-26", size: "26", color: "Blanco/Blanco", price: 2899.0 },
+        // faltan tallas 27 y 28
+      ],
+      inventoryDistribution: "centro_and_plaza", // solo en Centro y Plaza Américas
+    },
+    {
+      name: "Jordan 1 Mid",
+      brand: "Jordan",
+      description: "Estilo urbano",
+      variants: [
+        { sku: "JORDAN-MID-BLK-25", size: "25", color: "Negro/Rojo", price: 3299.0 },
+        { sku: "JORDAN-MID-BLK-26", size: "26", color: "Negro/Rojo", price: 3299.0 },
+        { sku: "JORDAN-MID-BLK-27", size: "27", color: "Negro/Rojo", price: 3299.0 },
+        { sku: "JORDAN-MID-BLK-28", size: "28", color: "Negro/Rojo", price: 3299.0 },
+        // falta talla 24
+      ],
+      inventoryDistribution: "crystal_only", // solo en Plaza Crystal
+    },
+    {
+      name: "Old Skool",
+      brand: "Vans",
+      description: "Skate clásico",
+      variants: [
+        { sku: "VANS-OLD-BLK-24", size: "24", color: "Negro/Blanco", price: 1499.0 },
+        { sku: "VANS-OLD-BLK-25", size: "25", color: "Negro/Blanco", price: 1499.0 },
+        { sku: "VANS-OLD-BLK-26", size: "26", color: "Negro/Blanco", price: 1499.0 },
+        { sku: "VANS-OLD-BLK-27", size: "27", color: "Negro/Blanco", price: 1499.0 },
+        // falta talla 28
+      ],
+      inventoryDistribution: "all_except_crystal", // todas menos Plaza Crystal
     },
   ];
 
+  // Helper para asignar inventario según la distribución
+  function getStoresForDistribution(
+    dist: string,
+    centroId: string,
+    plazaId: string,
+    crystalId: string
+  ): { storeId: string; quantity: number }[] {
+    const stores: { storeId: string; quantity: number }[] = [];
+    const randomQty = () => Math.floor(Math.random() * 20) + 5; // 5-24
+
+    if (dist === "all") {
+      stores.push(
+        { storeId: centroId, quantity: randomQty() },
+        { storeId: plazaId, quantity: randomQty() },
+        { storeId: crystalId, quantity: randomQty() }
+      );
+    } else if (dist === "centro_and_plaza") {
+      stores.push(
+        { storeId: centroId, quantity: randomQty() },
+        { storeId: plazaId, quantity: randomQty() }
+      );
+    } else if (dist === "crystal_only") {
+      stores.push({ storeId: crystalId, quantity: randomQty() });
+    } else if (dist === "all_except_crystal") {
+      stores.push(
+        { storeId: centroId, quantity: randomQty() },
+        { storeId: plazaId, quantity: randomQty() }
+      );
+    }
+    return stores;
+  }
+
   for (const productData of products) {
     let product = await prisma.product.findFirst({
-      where: { name: productData.name },
+      where: { name: productData.name, brand: productData.brand },
     });
 
     if (!product) {
@@ -138,33 +265,36 @@ async function main() {
           brand: productData.brand,
           description: productData.description,
           variants: {
-            create: productData.variants.map((variant) => ({
-              sku: variant.sku,
-              size: variant.size,
-              color: variant.color,
-              price: variant.price, // Prisma convierte el número a Decimal automáticamente
-              inventory: {
-                create: [
-                  {
-                    storeId: centroStore.id,
-                    quantity: Math.floor(Math.random() * 20) + 5,
-                  },
-                  {
-                    storeId: plazaStore.id,
-                    quantity: Math.floor(Math.random() * 20) + 5,
-                  },
-                ],
-              },
-            })),
+            create: productData.variants.map((variant) => {
+              const storeList = getStoresForDistribution(
+                productData.inventoryDistribution,
+                centroStore.id,
+                plazaAmericasStore.id,
+                plazaCrystalStore.id
+              );
+              return {
+                sku: variant.sku,
+                size: variant.size,
+                color: variant.color,
+                price: variant.price,
+                inventory: {
+                  create: storeList.map((s) => ({
+                    storeId: s.storeId,
+                    quantity: s.quantity,
+                  })),
+                },
+              };
+            }),
           },
         },
       });
+      console.log(`Producto creado: ${product.name} (${product.brand})`);
+    } else {
+      console.log(`Producto ya existente: ${product.name} (${product.brand})`);
     }
-
-    console.log(`Producto creado/verificado: ${product.name} (${product.brand})`);
   }
 
-  // Crear cliente demo (solo una vez)
+  // Cliente demo
   const demoCustomer = await prisma.customer.upsert({
     where: { email: "cliente@bentenison.mx" },
     update: {},
