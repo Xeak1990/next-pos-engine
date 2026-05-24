@@ -345,6 +345,7 @@ export default function UsersAdminClient({
                         type="button"
                         onClick={() => handleEditUser(user)}
                         className="bt-button-ghost px-4 py-2 text-xs rounded-[12px] border border-[#333333] text-[#D1D5DB] hover:bg-[#333333]/20 transition-colors duration-200"
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       >
                         Editar
                       </button>
@@ -357,6 +358,7 @@ export default function UsersAdminClient({
                               ? "bt-button-ghost px-4 py-2 text-xs rounded-[12px] border border-[#333333] text-[#D1D5DB] hover:bg-[#333333]/20 transition-colors duration-200"
                               : "bt-button-primary px-4 py-2 text-xs rounded-[12px] bg-[#E8621A] text-white hover:bg-[#E8621A]/80 transition-colors duration-200"
                           }
+                          style={{ fontFamily: "Arial, sans-serif" }}
                         >
                           {user.isActive ? "Desactivar" : "Reactivar"}
                         </button>
