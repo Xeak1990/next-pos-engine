@@ -42,7 +42,6 @@ export default function StockModal({ productName, price, variants, onClose }: St
             <h3 className="text-xl font-bold text-white">{productName}</h3>
             <p className="text-[#2ECC71] font-mono">{formatCurrency(price)}</p>
           </div>
-          <button onClick={onClose} className="text-[#9CA3AF] hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
         {/* Contenido con scroll interno */}

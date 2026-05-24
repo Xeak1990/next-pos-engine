@@ -4,83 +4,121 @@ import { useState } from "react";
 import StockModal from "./StockModal";
 import { Product } from "../../types";
 import { formatCurrency } from "../../lib/utils";
-import { useCartWeb } from "../../context/CartContextWeb";
 
 export default function ProductCard({ product }: { product: Product }) {
-  const { addItem } = useCartWeb();
-  const [selectedVariantId, setSelectedVariantId] = useState(product.variants[0]?.id || "");
-  const [quantity, setQuantity] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  const selectedVariant = product.variants.find(v => v.id === selectedVariantId);
-  const price = selectedVariant ? Number(selectedVariant.price) : 0;
-  const totalStock = selectedVariant?.inventory.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-  const color = product.variants[0]?.color || "Sin color";
-  const allInventory = product.variants.flatMap(v => v.inventory);
+  const variants = product.variants;
+  const colors = [...new Set(variants.map((v) => v.color))];
+  const firstVariant = variants[0];
+  const price = selectedSize
+    ? Number(variants.find((v) => v.size === selectedSize)?.price || 0)
+    : Number(firstVariant?.price || 0);
 
-  const handleAddToCart = () => {
-    if (!selectedVariant) return;
-    addItem({
-      productId: product.id,
-      name: `${product.name} (${selectedVariant.size})`,
-      price,
-      quantity,
-      image: undefined,
-      size: selectedVariant.size,
-    });
-    setQuantity(1);
+  const availableSizes = variants.map((v) => v.size);
+  const firstColor = colors[0] || "Sin color";
+
+  const handleSizeClick = (size: string) => {
+    setSelectedSize(selectedSize === size ? null : size);
+  };
+
+  const handleViewStock = () => {
+    setIsModalOpen(true);
   };
 
   return (
     <>
-      <article className="bt-panel rounded-2xl p-5 flex flex-col h-full transition-all hover:border-[#E8621A]">
-        <div className="mb-3">
-          <p className="text-xs uppercase tracking-[0.22em] text-[#94A3B8]">{product.brand}</p>
-          <h3 className="mt-1 text-xl font-bold text-white">{product.name}</h3>
-          <p className="text-sm text-[#9CA3AF]">{color}</p>
-        </div>
-
-        {/* Selector de talla */}
-        <div className="mb-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-[#94A3B8]">Talla</label>
-          <select
-            value={selectedVariantId}
-            onChange={(e) => setSelectedVariantId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-[#333] bg-[#0F0F0F] p-2 text-white text-sm"
-          >
-            {product.variants.map(v => (
-              <option key={v.id} value={v.id}>{v.size} - {formatCurrency(v.price)}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Cantidad */}
-        <div className="mb-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-[#94A3B8]">Cantidad</label>
-          <input
-            type="number"
-            min={1}
-            max={totalStock}
-            value={quantity}
-            onChange={(e) => setQuantity(Math.min(Number(e.target.value), totalStock))}
-            className="mt-1 w-full rounded-lg border border-[#333] bg-[#0F0F0F] p-2 text-white text-sm"
-          />
-        </div>
-
-        <div className="mt-auto pt-4 border-t border-[#2A2A2A]">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-2xl font-bold text-[#2ECC71]">{formatCurrency(price)}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddToCart}
-                disabled={totalStock === 0}
-                className="rounded-full bg-[#E8621A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#c05210] disabled:opacity-50"
+      {/* Altura ajustable: cambia el valor entre corchetes */}
+      <article className="bt-panel rounded-[24px] flex flex-col h-[350px] transition-all duration-200 hover:border-[#E8621A] overflow-hidden">
+        {/* MITAD SUPERIOR */}
+        <div className="flex-1 bg-[#242424] relative">
+          <div className="w-[88%] mx-auto h-full relative">
+            {/* Badge categoría arriba izquierda */}
+            <div className="absolute top-[15px] left-[0px]">
+              <span
+                style={{
+                  display: "inline-block",
+                  borderRadius: "9999px",
+                  backgroundColor: "#1A3A5F",
+                  padding: "4px 12px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                  color: "#FFFFFF",
+                  lineHeight: "1.2",
+                  boxShadow:
+                    "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
+                }}
               >
-                Agregar
-              </button>
+                {product.category}
+              </span>
+            </div>
+            {/* Emoji centrado */}
+            <div className="flex items-center justify-center h-full">
+              <span className="text-7xl md:text-8xl">👟</span>
+            </div>
+          </div>
+        </div>
+
+        {/* MITAD INFERIOR: fondo gris oscuro */}
+        <div className="bg-[#111111] flex flex-col flex-shrink-0">
+          <div className="w-[88%] mx-auto pt-[2px] flex flex-col">
+            {/* Nombre */}
+            <h3
+              className="text-xl font-[900] uppercase text-white tracking-tight mb-[-8px]"
+              style={{
+                fontFamily: "Bebas Neue, sans-serif",
+                letterSpacing: "0.12em",
+              }}
+            >
+              {product.name}
+            </h3>
+
+            {/* Color */}
+            <p className="text-[13px] font-medium text-[#9CA3AF] lowercase mb-2">
+              {firstColor}
+            </p>
+
+            {/* Tallas */}
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-[5px]">
+                {availableSizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => handleSizeClick(size)}
+                    className={`px-3 py-1.5 text-xs font-semibold !rounded-md transition-all ${
+                      selectedSize === size
+                        ? "bg-[#E8621A] text-white border border-[#E8621A]"
+                        : "bg-[#111111] border border-[#2D2D2D] text-[#D1D5DB] hover:border-[#E8621A] hover:text-white"
+                    }`}
+                    style={{
+                      fontFamily: "Arial, sans-serif",
+                      borderRadius: "0.375rem",
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Precio y botón Ver stock (rectangular, gris claro, texto blanco, Arial) */}
+            <div className="mt-auto pt-3 flex items-center justify-between">
+              <p
+                className="font-mono !text-5xl !font-black text-[#E8621A]"
+                style={{ 
+                  fontSize: "22px",
+                  fontWeight: 600 
+                }}
+              >
+                {formatCurrency(price)}
+              </p>
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="rounded-full border border-[#333] bg-[#111] px-4 py-2 text-xs font-semibold text-[#D1D5DB] hover:border-[#E8621A] hover:text-white"
+                onClick={handleViewStock}
+                className="bt-button-gray rounded-[14px] text-xs tracking-[0.18em]"
+                style={{ fontFamily: "Arial, sans-serif" }}
               >
                 Ver stock
               </button>
@@ -91,7 +129,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {isModalOpen && (
         <StockModal
-          productName={`${product.name} (${color})`}
+          productName={`${product.name} (${firstColor})`}
           price={price.toString()}
           variants={product.variants}
           onClose={() => setIsModalOpen(false)}

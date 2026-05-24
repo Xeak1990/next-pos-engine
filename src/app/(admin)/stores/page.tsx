@@ -80,7 +80,7 @@ export default function StoresPage() {
 
   return (
     <div className="text-white p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 m-[5px]">
         <h1 className="text-3xl font-bold">Sucursales</h1>
         <button
           onClick={() => {
@@ -94,7 +94,7 @@ export default function StoresPage() {
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 m-[5px]">
         {stores.map((store) => (
           <div key={store.id} className="bt-panel rounded-2xl p-5 relative">
             <div className="absolute top-3 right-3 flex gap-2">

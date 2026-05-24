@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { formatCurrency } from "../../lib/utils";
 import { useCart } from "../../lib/CartContext";
 
@@ -13,6 +14,17 @@ export interface PosProduct {
   price: string;
   stock: number;
   storeName: string;
+}
+
+function formatLowercaseDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(date)
+    .toLowerCase();
 }
 
 function normalizeString(value: string) {
@@ -36,8 +48,37 @@ export default function ProductListClient({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-  const [selectedStore, setSelectedStore] = useState(initialStoreLocation ?? "");
+  const [selectedStore, setSelectedStore] = useState(
+    initialStoreLocation ?? "",
+  );
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { addItem } = useCart();
+
+  // ============================================================
+  // AJUSTES PERSONALIZABLES (ancho y altura en píxeles)
+  // ============================================================
+  const CARD_WIDTH_PX = 220;
+  const STORE_SELECTOR_WIDTH_PX = 200;
+  const STORE_SELECTOR_HEIGHT_PX = 65;
+  const SEARCH_BAR_HEIGHT_PX = 65;
+  // ============================================================
+
+  const now = new Date();
+
+  useEffect(() => {
+    async function fetchUserRole() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        const role = data.customer?.role?.toUpperCase();
+        setUserRole(role || null);
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+      }
+    }
+    fetchUserRole();
+  }, []);
 
   const storeOptions = Array.from(
     new Set(products.map((product) => product.storeName).filter(Boolean)),
@@ -50,15 +91,14 @@ export default function ProductListClient({
     ).sort((left, right) => left.localeCompare(right, "es")),
   ];
 
-  const activeStore =
-    storeOptions.includes(selectedStore)
-      ? selectedStore
-      : initialStoreLocation && storeOptions.includes(initialStoreLocation)
-        ? initialStoreLocation
-        : storeOptions[0] || "";
+  const activeStore = storeOptions.includes(selectedStore)
+    ? selectedStore
+    : initialStoreLocation && storeOptions.includes(initialStoreLocation)
+      ? initialStoreLocation
+      : storeOptions[0] || "";
 
-  // Determinar si el usuario puede editar (agregar productos) en la sucursal activa
   const hasFixedStore = Boolean(initialStoreLocation);
+  const canChangeBranch = userRole === "ADMIN";
   const canEdit = !hasFixedStore || activeStore === initialStoreLocation;
 
   const selectedStoreNormalized = normalizeString(activeStore);
@@ -84,54 +124,121 @@ export default function ProductListClient({
   });
 
   return (
-    <section className="bt-panel flex h-full min-h-[calc(100vh-140px)] flex-col overflow-hidden lg:min-h-0">
-      <div className="border-b border-[#333333] bg-[#1A1A1A] px-5 py-5 sm:px-6">
-        <div className="mb-5">
-          <p className="text-xs uppercase tracking-[0.32em] text-[#94A3B8]">Punto de Venta</p>
-          <h1 className="mt-3 text-4xl tracking-wider text-white">Terminal POS</h1>
-        </div>
+    <section className="flex h-full flex-col m-[5px]">
+      {/* Cabecera con migas de pan y título */}
+      <div className="border-b border-[#333333] px-4 py-3">
+        {/* Migas de pan */}
+        <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
+          <Link
+            href="/"
+            className="hover:text-white transition-colors duration-200"
+          >
+            Principal
+          </Link>
+          <span>/</span>
+          <span className="text-[#e8621a]">Punto de venta</span>
+        </nav>
 
-        <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <div className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Sucursal</p>
-            <select
-              value={activeStore}
-              onChange={(event) => setSelectedStore(event.target.value)}
-              className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm font-semibold text-[#E8621A]"
+        {/* Título principal estilo Dashboard */}
+        <h1
+          className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
+          style={{
+            fontFamily: "Bebas Neue, sans-serif",
+            transform: "scale(0.85, 1.15)",
+            transformOrigin: "left center",
+            WebkitTextStroke: "1.5px white",
+            letterSpacing: "0.12em",
+          }}
+        >
+          punto de venta
+        </h1>
+
+        {/* FECHA */}
+        <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
+          {formatLowercaseDate(now)}
+        </p>
+
+        {/* Campos de sucursal y búsqueda con margen inferior de 5px */}
+        <div
+          className="mt-4 mb-[15px] grid gap-[15px]"
+          style={{ gridTemplateColumns: `${STORE_SELECTOR_WIDTH_PX}px 1fr` }}
+        >
+          {/* Sucursal */}
+          <div>
+            <p
+              className="text-[10px] uppercase tracking-[0.22em] text-[#94A3B8] mb-[5px]"
+              style={{ fontFamily: "Arial, sans-serif" }}
             >
-              {storeOptions.map((store) => (
-                <option key={store} value={store} className="bg-[#1A1A1A] text-white">
-                  {store}
-                </option>
-              ))}
-            </select>
-            {hasFixedStore && !canEdit && (
-              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#E8621A]">
-                ⚠️ Modo consulta: solo puedes vender en {initialStoreName ?? "tu sucursal"}
-              </p>
-            )}
-            {hasFixedStore && canEdit && (
-              <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-[#2ECC71]">
-                ✅ Venta activa en tu sucursal asignada
-              </p>
-            )}
+              Sucursal
+            </p>
+            <div
+              className="rounded-[12px] border border-[#333333] bg-[#111111] px-3 py-2 flex flex-col justify-center"
+              style={{ minHeight: STORE_SELECTOR_HEIGHT_PX }}
+            >
+              <select
+                value={activeStore}
+                onChange={(event) => setSelectedStore(event.target.value)}
+                disabled={!canChangeBranch}
+                className="w-full border-none bg-transparent px-0 py-0 text-xs font-semibold text-[#E8621A] disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ fontFamily: "Arial, sans-serif" }}
+              >
+                {storeOptions.map((store) => (
+                  <option
+                    key={store}
+                    value={store}
+                    className="bg-[#1A1A1A] text-white"
+                  >
+                    {store}
+                  </option>
+                ))}
+              </select>
+              {hasFixedStore && !canEdit && (
+                <p
+                  className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#E8621A]"
+                  style={{ fontFamily: "Arial, sans-serif" }}
+                >
+                  ⚠️ Consulta
+                </p>
+              )}
+              {hasFixedStore && canEdit && (
+                <p
+                  className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#2ECC71]"
+                  style={{ fontFamily: "Arial, sans-serif" }}
+                >
+                  ✅ Venta activa
+                </p>
+              )}
+            </div>
           </div>
 
-          <label className="rounded-[12px] border border-[#333333] bg-[#111111] px-4 py-3">
-            <span className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Busqueda</span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar modelo, marca o talla"
-              className="mt-2 w-full border-none bg-transparent px-0 py-0 text-sm text-white placeholder:text-[#6B7280]"
-            />
-          </label>
+          {/* Búsqueda */}
+          <div>
+            <p
+              className="text-[10px] uppercase tracking-[0.22em] text-[#94A3B8] mb-[5px]"
+              style={{ fontFamily: "Arial, sans-serif" }}
+            >
+              Búsqueda
+            </p>
+            <label
+              className="rounded-[12px] border border-[#333333] bg-[#111111] px-3 py-2 flex flex-col justify-center"
+              style={{ minHeight: SEARCH_BAR_HEIGHT_PX }}
+            >
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Modelo, marca o talla"
+                className="w-full border-none bg-transparent px-0 py-0 text-xs text-white placeholder:text-[#6B7280]"
+                style={{ fontFamily: "Arial, sans-serif" }}
+              />
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="border-b border-[#333333] bg-[#151515] px-5 py-4 sm:px-6">
-        <div className="flex gap-2 overflow-x-auto whitespace-nowrap">
+      {/* Categorías */}
+      <div className="border-b border-[#333333] px-[7px] py-[10px]">
+        <div className="flex gap-[5px] overflow-x-auto whitespace-nowrap">
           {categoryOptions.map((category) => (
             <button
               key={category}
@@ -139,9 +246,10 @@ export default function ProductListClient({
               onClick={() => setSelectedCategory(category)}
               className={
                 selectedCategory === category
-                  ? "bt-button-primary shrink-0 px-4 py-2 text-xs"
-                  : "bt-button-ghost shrink-0 px-4 py-2 text-xs"
+                  ? "bt-button-primary shrink-0 px-3 py-1 text-[10px]"
+                  : "bt-button-ghost shrink-0 px-3 py-1 text-[10px]"
               }
+              style={{ fontFamily: "Arial, sans-serif" }}
             >
               {category}
             </button>
@@ -149,66 +257,55 @@ export default function ProductListClient({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+      {/* Grid de productos */}
+      <div className="flex-1 overflow-y-auto p-4 !mt-[5px]">
         {isLoading ? (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
+          <div className="flex flex-wrap gap-3 ">
+            {Array.from({ length: 12 }).map((_, index) => (
               <div
                 key={index}
-                className="animate-pulse rounded-[12px] border border-[#333333] bg-[#141414] p-6"
-              >
-                <div className="h-5 w-2/3 rounded bg-white/10" />
-                <div className="mt-3 h-4 w-1/3 rounded bg-white/10" />
-                <div className="mt-8 h-10 w-full rounded bg-white/10" />
-              </div>
+                className="animate-pulse rounded-[12px] border border-[#333333] bg-[#141414]"
+                style={{ width: CARD_WIDTH_PX, height: 200 }}
+              />
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className="grid gap-[10px] p-1"
+            style={{
+              gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_WIDTH_PX}px, 1fr))`,
+            }}
+          >
             {filteredProducts.map((product) => (
               <article
                 key={product.id}
-                className={`rounded-[12px] border bg-[#151515] p-6 transition-all hover:border-[#E8621A] hover:shadow-[0_14px_34px_rgba(0,0,0,0.22)] ${
-                  product.stock === 0 ? "border-[#333333] opacity-65" : "border-[#333333]"
+                className={`rounded-[12px] border bg-[#151515] p-[5px] flex flex-col transition-all hover:border-[#E8621A] hover:shadow-md ${
+                  product.stock === 0
+                    ? "border-[#333333] opacity-65"
+                    : "border-[#333333]"
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-[#94A3B8]">
-                      {product.brand} / {product.category}
-                    </p>
-                    <h2 className="mt-3 text-3xl leading-none tracking-wider text-white">
-                      {product.name}
-                    </h2>
-                  </div>
-                  <span className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-3 py-1 font-mono text-xs font-semibold text-[#E8621A]">
-                    T-{product.size}
-                  </span>
+                <div className="w-full aspect-square mb-1 bg-[#0F0F0F] rounded-[8px] flex items-center justify-center text-3xl">
+                  👟
                 </div>
-
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="font-mono text-2xl font-bold text-[#2ECC71]">
+                <div className="flex-1 overflow-hidden">
+                  <h3
+                    className="text-xs font-bold text-white leading-tight line-clamp-2"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
+                    {product.name}
+                  </h3>
+                  <p
+                    className="text-[10px] text-[#94A3B8] mt-0.5"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
+                    {product.brand} / {product.size}
+                  </p>
+                  <p className="font-mono text-xs font-bold text-[#2ECC71] mt-0.5">
                     {formatCurrency(product.price)}
                   </p>
-                  {product.stock === 0 && (
-                    <span className="rounded-full border border-[#E8621A]/40 bg-[#E8621A]/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#E8621A]">
-                      Agotado
-                    </span>
-                  )}
                 </div>
-
-                <div className="mt-8 flex items-end justify-between gap-4 border-t border-[#2A2A2A] pt-5">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Stock</p>
-                    <p
-                      className={`mt-2 font-mono text-sm font-semibold ${
-                        product.stock <= 2 ? "text-[#E8621A]" : "text-white"
-                      }`}
-                    >
-                      {product.stock} uds
-                    </p>
-                  </div>
-
+                <div className="mt-2">
                   {product.stock > 0 ? (
                     canEdit ? (
                       <button
@@ -226,18 +323,25 @@ export default function ProductListClient({
                             product.stock,
                           )
                         }
-                        className="bt-button-primary px-5 py-3 text-xs"
+                        className="bt-button-primary w-full py-0.5 text-[9px] rounded-[8px]"
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       >
                         Agregar
                       </button>
                     ) : (
-                      <div className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-4 py-3 text-[11px] uppercase tracking-[0.22em] text-[#6B7280]">
+                      <div
+                        className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#6B7280]"
+                        style={{ fontFamily: "Arial, sans-serif" }}
+                      >
                         Solo consulta
                       </div>
                     )
                   ) : (
-                    <div className="rounded-[8px] border border-[#333333] bg-[#0F0F0F] px-4 py-3 text-[11px] uppercase tracking-[0.22em] text-[#6B7280]">
-                      Sin stock
+                    <div
+                      className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#E8621A]"
+                      style={{ fontFamily: "Arial, sans-serif" }}
+                    >
+                      Agotado
                     </div>
                   )}
                 </div>
@@ -245,10 +349,18 @@ export default function ProductListClient({
             ))}
           </div>
         ) : (
-          <div className="rounded-[12px] border border-dashed border-[#333333] bg-[#141414] px-6 py-16 text-center">
-            <p className="text-2xl text-white">No hay productos disponibles</p>
-            <p className="mt-3 text-sm text-[#9CA3AF]">
-              Ajusta la sucursal, categoria o termino de busqueda para continuar.
+          <div className="rounded-[12px] border border-dashed border-[#333333] bg-[#141414] px-4 py-12 text-center">
+            <p
+              className="text-white"
+              style={{ fontFamily: "Arial, sans-serif" }}
+            >
+              No hay productos
+            </p>
+            <p
+              className="text-xs text-[#9CA3AF] mt-1"
+              style={{ fontFamily: "Arial, sans-serif" }}
+            >
+              Ajusta los filtros
             </p>
           </div>
         )}

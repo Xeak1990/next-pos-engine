@@ -1,5 +1,6 @@
-import NavbarShop from "../../components/shop/NavbarShop";
 import { CartProviderWeb } from "../../context/CartContextWeb";
+// Elimina la importación de NavbarShop
+// import NavbarShop from "../../components/shop/NavbarShop";
 
 export default function ShopLayout({
   children,
@@ -9,10 +10,10 @@ export default function ShopLayout({
   return (
     <CartProviderWeb>
       <div
-        className="min-h-screen bg-[#0F0F0F] text-white"
+        className="min-h-screen text-white m-[5px]"
         style={{ overflowY: "visible" }}
       >
-        <NavbarShop />
+        {/* Eliminado: <NavbarShop /> */}
         <main className="container mx-auto px-4 py-6 lg:px-8">{children}</main>
       </div>
     </CartProviderWeb>

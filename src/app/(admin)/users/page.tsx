@@ -32,7 +32,7 @@ export default async function UsersPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8 m-[5px]">
       <UsersAdminClient initialUsers={initialUsers} stores={storeOptions} />
     </div>
   );

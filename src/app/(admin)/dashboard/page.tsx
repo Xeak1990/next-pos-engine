@@ -193,7 +193,7 @@ export default async function DashboardPage() {
     role === "MANAGER" ? "1/1" : `${storesCount}/${storesCount}`;
 
   return (
-    <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden">
+    <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden m-[5px]">
       {/* Ajustamos el contenedor de la cabecera para que sea un row y use justify-between */}
       {/* Después: Quitamos mx-auto y max-w, usamos w-full */}
       <div className="flex w-full items-start justify-between mb-[15px]">
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
           </h1>
 
           {/* FECHA */}
-          <p className="mt-3 text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
             {formatLowercaseDate(now)}
           </p>
         </div>
@@ -535,7 +535,8 @@ export default async function DashboardPage() {
               >
                 🕒 Ventas recientes
               </h2>
-              <button className="rounded-md border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280] hover:text-white">
+              <button 
+              className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
                 Ver todas →
               </button>
             </div>
@@ -611,7 +612,7 @@ export default async function DashboardPage() {
               >
                 ⚠️ Alertas de stock
               </h2>
-              <button className="rounded-md border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-semibold transition-colors hover:border-[#6B7280] hover:text-white">
+              <button className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
                 Gestionar →
               </button>
             </div>

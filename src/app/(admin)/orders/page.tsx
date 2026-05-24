@@ -75,7 +75,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="text-white">
+    <div className="text-white m-[5px]">
       <h1 className="text-3xl font-bold mb-6">Gestión de Pedidos</h1>
       <div className="space-y-6">
         {orders.map((order) => (

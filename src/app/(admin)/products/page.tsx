@@ -6,7 +6,7 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <div className="min-h-screen px-4 py-6 text-white sm:px-6 lg:px-8 m-[5px]">
       <div className="space-y-6">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

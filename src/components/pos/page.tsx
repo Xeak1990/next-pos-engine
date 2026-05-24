@@ -17,7 +17,6 @@ export default function PosPage({
   useEffect(() => {
     async function loadProducts() {
       setIsLoading(true);
-
       try {
         const response = await fetch("/api/products");
         const data = await response.json();
@@ -29,26 +28,30 @@ export default function PosPage({
         setIsLoading(false);
       }
     }
-
     loadProducts();
   }, []);
 
   return (
-    <main className="bg-[#0F0F0F] px-4 py-4 text-white lg:px-6">
-      <div className="grid gap-6 lg:h-[calc(100vh-68px)] lg:grid-cols-[70%_30%]">
-        <section className="min-w-0 lg:h-full">
+    <div className="text-white h-screen flex flex-col !overflow-hidden m-[5px]">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Área de productos: ocupa todo el espacio restante */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           <ProductListClient
             products={products}
             isLoading={isLoading}
             initialStoreLocation={initialStoreLocation}
             initialStoreName={initialStoreName}
           />
-        </section>
-
-        <aside className="min-w-0 lg:h-full">
-          <CartPanel storeLocation={initialStoreLocation ?? initialStoreName ?? "Operacion Global"} />
+        </div>
+        {/* Carrito: fijo a la derecha, no se colapsa */}
+        <aside className="w-[320px] shrink-0 border-l border-[#333333] bg-[#0F0F0F] overflow-hidden">
+          <CartPanel
+            storeLocation={
+              initialStoreLocation ?? initialStoreName ?? "Operación Global"
+            }
+          />
         </aside>
       </div>
-    </main>
+    </div>
   );
 }

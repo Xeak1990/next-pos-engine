@@ -33,35 +33,61 @@ function normalizeString(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function matchesBranch(item: InventoryItem, branchId: (typeof branchButtons)[number]["id"]) {
-  const normalizedStore = normalizeString(`${item.storeName} ${item.storeLocation}`);
+function matchesBranch(
+  item: InventoryItem,
+  branchId: (typeof branchButtons)[number]["id"],
+) {
+  const normalizedStore = normalizeString(
+    `${item.storeName} ${item.storeLocation}`,
+  );
 
   if (branchId === "centro-xalapa") {
-    return normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico");
+    return (
+      normalizedStore.includes("centro xalapa") ||
+      normalizedStore.includes("centro historico")
+    );
   }
   if (branchId === "galeria-veracruz") {
-    return normalizedStore.includes("galeria veracruz") || normalizedStore.includes("veracruz");
+    return (
+      normalizedStore.includes("galeria veracruz") ||
+      normalizedStore.includes("veracruz")
+    );
   }
-  return normalizedStore.includes("plaza crystal") || normalizedStore.includes("plaza");
+  return (
+    normalizedStore.includes("plaza crystal") ||
+    normalizedStore.includes("plaza")
+  );
 }
 
 function getBranchIdFromStore(storeName: string, storeLocation: string) {
   const normalizedStore = normalizeString(`${storeName} ${storeLocation}`);
-  if (normalizedStore.includes("centro xalapa") || normalizedStore.includes("centro historico")) {
+  if (
+    normalizedStore.includes("centro xalapa") ||
+    normalizedStore.includes("centro historico")
+  ) {
     return "centro-xalapa";
   }
-  if (normalizedStore.includes("galeria veracruz") || normalizedStore.includes("veracruz")) {
+  if (
+    normalizedStore.includes("galeria veracruz") ||
+    normalizedStore.includes("veracruz")
+  ) {
     return "galeria-veracruz";
   }
   return "plaza-crystal";
 }
 
-export default function InventoryTable({ initialData }: { initialData: InventoryItem[] }) {
+export default function InventoryTable({
+  initialData,
+}: {
+  initialData: InventoryItem[];
+}) {
   const [inventory, setInventory] = useState(initialData);
-  const [user, setUser] = useState<{ role: string; storeId: string | null } | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<(typeof branchButtons)[number]["id"]>(
-    "centro-xalapa",
-  );
+  const [user, setUser] = useState<{
+    role: string;
+    storeId: string | null;
+  } | null>(null);
+  const [selectedBranch, setSelectedBranch] =
+    useState<(typeof branchButtons)[number]["id"]>("centro-xalapa");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -70,13 +96,25 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
         const response = await fetch("/api/auth/me");
         if (!response.ok) return;
         const data = await response.json();
-        setUser({ role: data.role, storeId: data.storeId });
+        const customer = data.customer;
+        if (!customer) {
+          console.error("No customer data in response");
+          return;
+        }
+        const role = (customer.role || "").toUpperCase();
+        setUser({ role, storeId: customer.storeId || null });
 
-        // Si es MANAGER y tiene storeId, selecciona su sucursal por defecto
-        if (data.role === "MANAGER" && data.storeId) {
-          const scopedItem = initialData.find((item) => item.storeId === data.storeId);
+        if (role === "MANAGER" && customer.storeId) {
+          const scopedItem = initialData.find(
+            (item) => item.storeId === customer.storeId,
+          );
           if (scopedItem) {
-            setSelectedBranch(getBranchIdFromStore(scopedItem.storeName, scopedItem.storeLocation));
+            setSelectedBranch(
+              getBranchIdFromStore(
+                scopedItem.storeName,
+                scopedItem.storeLocation,
+              ),
+            );
           }
         }
       } catch (error) {
@@ -86,16 +124,9 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     fetchUser();
   }, [initialData]);
 
-  // Solo los ADMIN pueden modificar stock
   const canModifyStock = user?.role === "ADMIN";
-
-  // Para MANAGER: puede ver cualquier sucursal, pero no editar
-  // Para CASHIER: normalmente tiene storeId fijo; aquí decidimos si restringir
-  // Por simplicidad, permitimos a MANAGER cambiar de sucursal; CASHIER se queda con la suya
   const canChangeBranch = user?.role === "ADMIN" || user?.role === "MANAGER";
 
-  // Filtro: si el usuario tiene storeId y NO puede cambiar de sucursal (CASHIER), forzamos su sucursal.
-  // En caso contrario (ADMIN o MANAGER con permiso), mostramos la sucursal seleccionada por el usuario.
   const visibleInventory = inventory.filter((item) => {
     if (!canChangeBranch && user?.storeId) {
       return item.storeId === user.storeId;
@@ -109,7 +140,9 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     const previousInventory = inventory;
     setInventory((current) =>
       current.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item,
+        item.id === id
+          ? { ...item, quantity: Math.max(0, item.quantity + amount) }
+          : item,
       ),
     );
     startTransition(async () => {
@@ -121,19 +154,64 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     });
   };
 
+  const now = new Date();
+  const formattedDate = new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+    .format(now)
+    .toLowerCase();
+
   return (
-    <section className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-        <div className="grid gap-4 md:grid-cols-3">
+    <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible">
+      {/* Cabecera estilo Dashboard */}
+      <div className="flex w-full items-start justify-between mb-[15px]">
+        <div className="flex flex-col">
+          <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
+            <span className="hover:text-white transition-colors duration-200 cursor-default">
+              Operaciones
+            </span>
+            <span>/</span>
+            <span className="text-[#e8621a]">Inventario</span>
+          </nav>
+          <h1
+            className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
+            style={{
+              fontFamily: "Bebas Neue, sans-serif",
+              transform: "scale(0.85, 1.15)",
+              transformOrigin: "left center",
+              WebkitTextStroke: "1.5px white",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Inventario
+          </h1>
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] opacity-80">
+            Stock por sucursal
+          </p>
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
+            {formattedDate}
+          </p>
+        </div>
+      </div>
+
+      {/* Botones de sucursal (fuera del panel, secuenciales) */}
+      <div className="mb-[10px]">
+        <div className="flex flex-wrap gap-[10px]">
           {branchButtons.map((branch) => {
             const isActive = selectedBranch === branch.id;
-            // Si el usuario es CASHIER y no puede cambiar, deshabilitamos todos los botones excepto su sucursal (si la encontramos)
             let disabled = false;
             if (!canChangeBranch && user?.storeId) {
-              // CASHIER: solo permite su propia sucursal; averiguamos cuál es
-              const ownStoreItem = inventory.find((item) => item.storeId === user.storeId);
+              const ownStoreItem = inventory.find(
+                (item) => item.storeId === user.storeId,
+              );
               if (ownStoreItem) {
-                const ownBranchId = getBranchIdFromStore(ownStoreItem.storeName, ownStoreItem.storeLocation);
+                const ownBranchId = getBranchIdFromStore(
+                  ownStoreItem.storeName,
+                  ownStoreItem.storeLocation,
+                );
                 disabled = branch.id !== ownBranchId;
               } else {
                 disabled = true;
@@ -146,109 +224,173 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                 type="button"
                 onClick={() => setSelectedBranch(branch.id)}
                 disabled={disabled}
-                className={
+                className={`px-4 py-[10px] text-xs font-[600] uppercase tracking-[0.18em] rounded-[7px] transition-all ${
                   isActive
-                    ? "rounded-[12px] border border-[#E8621A] bg-[#E8621A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[0_12px_28px_rgba(232,98,26,0.18)]"
-                    : "rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#CBD5E1] hover:border-[#E8621A] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                }
+                    ? "bg-[#E8621A] text-white border border-[#E8621A] shadow-md"
+                    : "bg-[#2A2A2A] text-white border border-transparent hover:bg-[#2C2C2C] disabled:opacity-50 disabled:cursor-not-allowed"
+                }`}
+                style={{ color: "#FFFFFF", fontFamily: "Arial, sans-serif" }}
               >
                 {branch.label}
               </button>
             );
           })}
         </div>
+      </div>
 
-        <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[#94A3B8]">Registros visibles</p>
-          <p className="mt-2 font-mono text-3xl font-bold text-white">{visibleInventory.length}</p>
+      {/* NUEVA FILA DE INFORMACIÓN: Variantes activas + Registros visibles */}
+      <div className="flex flex-wrap gap-[10px] mb-[10px]">
+        {/* Panel azul: Variantes activas (total de registros) */}
+        <div className="bt-panel-blue rounded-[12px] px-5 py-4 flex-1 min-w-[180px]">
+          <p className="text-xs uppercase tracking-[0.3em] text-[#C9D8EA] font-semibold">
+            Variantes activas
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold text-white">
+            {inventory.length}
+          </p>
+        </div>
+
+        {/* Panel gris: Registros visibles (filtrados) */}
+        <div className="rounded-[14px] border border-[#333333] bg-[#111111] px-5 py-4 flex-1 min-w-[180px]">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8] font-semibold">
+            Registros visibles
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold text-white">
+            {visibleInventory.length}
+          </p>
         </div>
       </div>
 
-      <div className="bt-table-shell">
-        <div className="custom-scrollbar overflow-x-auto">
-          <table className="bt-table min-w-[760px] table-fixed">
-            <colgroup>
-              <col className="w-[44%]" />
-              <col className="w-[18%]" />
-              <col className="w-[18%]" />
-              <col className="w-[20%]" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Talla</th>
-                <th>Stock</th>
-                <th className="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleInventory.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <div>
-                      <p className="font-semibold text-white">{item.variant.product.name}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#94A3B8]">
-                        {item.variant.color} / {item.storeName}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="font-mono text-sm text-white">{item.variant.size}</td>
-                  <td>
-                    <span
-                      className={`rounded-full px-3 py-1 font-mono text-xs font-semibold ${
-                        item.quantity <= 2
-                          ? "bg-[#E8621A]/12 text-[#E8621A]"
-                          : "bg-[#2ECC71]/12 text-[#2ECC71]"
-                      }`}
-                    >
-                      {item.quantity} uds
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex justify-end gap-2">
-                      {canModifyStock ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleAdjust(item.id, -1)}
-                            className="bt-button-ghost px-3 py-2 text-xs"
-                          >
-                            -1
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAdjust(item.id, 1)}
-                            className="bt-button-primary px-3 py-2 text-xs"
-                          >
-                            +1
-                          </button>
-                        </>
-                      ) : (
-                        <span className="px-3 py-2 text-xs uppercase tracking-[0.18em] text-[#6B7280]">
-                          Solo consulta
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {visibleInventory.length === 0 && (
+      {/* Panel principal (bt-panel) ahora solo con la tabla */}
+      <div className="bt-panel rounded-[24px] shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-5">
+        {/* Tabla de inventario */}
+        <div className="bt-table-shell rounded-[24px] overflow-hidden border border-[#2A2A2A]">
+          <div className="custom-scrollbar overflow-x-auto">
+            <table className="bt-table min-w-[760px] table-fixed w-full">
+              <colgroup>
+                <col className="w-[44%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
+                <col className="w-[20%]" />
+              </colgroup>
+              <thead className="bg-[#1A1A1A]">
                 <tr>
-                  <td colSpan={4} className="px-6 py-14 text-center text-sm text-[#9CA3AF]">
-                    No hay existencias para la sucursal seleccionada.
-                  </td>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Producto
+                  </th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Talla
+                  </th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Stock
+                  </th>
+                  <th className="text-right text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Acciones
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visibleInventory.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-t border-[#222222] hover:bg-[#1A1A1A]/40 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-semibold text-white font-sans">
+                          {item.variant.product.name} 
+                        </p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-[#94A3B8]">
+                          {item.variant.color} 
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-sm text-white">
+                      {item.variant.size}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block !rounded-[12px] px-3 py-1 font-mono text-xs font-semibold ${
+                          item.quantity <= 2
+                            ? "bg-[#E8621A]/15 text-[#E8621A]"
+                            : "bg-[#2ECC71]/15 text-[#2ECC71]"
+                        }`}
+                        style={{
+                          display: "inline-block",
+                          borderRadius: "9999px",
+                          backgroundColor: "#1E2A1C",
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.2em",
+                          color: "#2ECC71",
+                          lineHeight: "1",
+                          boxShadow:
+                            "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
+                        }}
+                      >
+                        {item.quantity} uds
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-[5px]">
+                        {canModifyStock ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleAdjust(item.id, -1)}
+                              className="inline-flex items-center justify-center w-[30px] h-[30px] text-xs font-semibold rounded-[5px] border-none bg-[#2A2A2A] text-white hover:bg-[#3A3A3A]"
+                              style={{
+                                color: "#FFFFFF",
+                                fontFamily: "Arial, sans-serif",
+                              }}
+                            >
+                              -1
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAdjust(item.id, 1)}
+                              className="inline-flex items-center justify-center w-[30px] h-[30px] text-xs font-bold uppercase tracking-[0.12em] rounded-[5px] border-none bg-[#E8621A] text-white hover:bg-[#f07330] transition-colors"
+                              style={{
+                                color: "#FFFFFF",
+                                fontFamily: "Arial, sans-serif",
+                              }}
+                            >
+                              +1
+                            </button>
+                          </>
+                        ) : (
+                          <span className="px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#6B7280] font-medium">
+                            Solo consulta
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {visibleInventory.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-6 py-14 text-center text-sm text-[#9CA3AF] font-sans"
+                    >
+                      No hay existencias para la sucursal seleccionada.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {isPending && (
-        <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A] px-5 py-3 text-xs uppercase tracking-[0.24em] text-[#94A3B8]">
-          Sincronizando inventario...
-        </div>
-      )}
-    </section>
+        {/* Estado de sincronización */}
+        {isPending && (
+          <div className="mt-4 rounded-[14px] border border-[#333333] bg-[#111111] px-5 py-3 text-xs uppercase tracking-[0.24em] text-[#94A3B8] text-center">
+            Sincronizando inventario...
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

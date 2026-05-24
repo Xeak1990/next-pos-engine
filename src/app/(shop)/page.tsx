@@ -86,10 +86,10 @@ export default async function ShopPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8 text-white">
+    <div className="mx-auto max-w-7xl px-6 py-8 text-white m-[5px]">
       {" "}
       {/* ← sin min-h-screen */}
-      <header className="mb-10">...</header>
+      <header className="mb-10"></header>
       <CatalogClient
         initialProducts={serializedProducts}
         filterOptions={filterOptions}

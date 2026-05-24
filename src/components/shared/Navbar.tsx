@@ -321,7 +321,7 @@ const navigationSections: NavSection[] = [
         name: "Catálogo Web",
         href: "/",
         icon: CatalogIcon,
-        roles: ["ADMIN", "MANAGER"],
+        roles: ["ADMIN", "MANAGER", "CASHIER"],
       },
     ],
   },
@@ -332,7 +332,7 @@ const navigationSections: NavSection[] = [
         name: "Productos",
         href: "/products",
         icon: ProductsIcon,
-        roles: ["ADMIN"],
+        roles: ["ADMIN", "MANAGER"],
       },
       {
         name: "Inventario",
@@ -340,7 +340,6 @@ const navigationSections: NavSection[] = [
         icon: InventoryIcon,
         roles: ALL_ROLES,
       },
-      // Añadida la sección de sucursales del mockup
       {
         name: "Sucursales",
         href: "/stores",
@@ -398,8 +397,11 @@ export default function Navbar() {
           setUser(null);
           return;
         }
-        const data = (await response.json()) as UserData;
-        setUser(data);
+        const data = await response.json();
+        const userData = data.customer;
+        if (userData?.role)
+          userData.role = userData.role.toUpperCase() as UserRole;
+        setUser(userData);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setUser(null);
@@ -420,12 +422,13 @@ export default function Navbar() {
     } catch (error) {
       console.error("Error en logout:", error);
     } finally {
-      // Eliminar cookies manualmente como respaldo
       document.cookie = "bt_auth=; path=/; max-age=0";
       document.cookie = "bt_customer_token=; path=/; max-age=0";
       window.location.href = "/login";
     }
   };
+
+  // Filtrar secciones según el rol del usuario
   const visibleSections = user
     ? navigationSections
         .map((section) => ({
@@ -435,18 +438,23 @@ export default function Navbar() {
         .filter((section) => section.items.length > 0)
     : [];
 
-  const userInitials =
-    user?.name
-      .split(" ")
-      .filter(Boolean)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "AG";
+  // Cálculo seguro de iniciales (evita el error .split)
+  const userInitials = (() => {
+    if (user?.name) {
+      return user.name
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return "AG";
+  })();
 
-  /* =========================================
-     RENDERIZADO DE SECCIONES
-     ========================================= */
   const renderSection = (section: NavSection, compact = false) => (
     <section key={section.title} className="mb-4">
       <p
@@ -457,8 +465,6 @@ export default function Navbar() {
       >
         {section.title}
       </p>
-
-      {/* Espaciado limpio entre botones */}
       <div className="mt-3 flex flex-col gap-3">
         {section.items.map((item) => {
           const isActive = isActivePath(pathname, item.href);
@@ -470,14 +476,11 @@ export default function Navbar() {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                // Bordes suavizados rectangulares (rounded-lg)
                 "group relative flex items-center gap-3 overflow-hidden rounded-lg pl-10 pr-4 py-3 min-h-[48px] text-[14px] font-medium transition-all duration-150",
                 compact && "px-3 py-2 text-sm",
                 isActive
-                  ? // Estado activo: Fondo sutil, texto naranja e indicador lateral (calcado al mockup)
-                    "bg-[#E8621A]/10 text-[#E8621A] before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-[#E8621A]"
-                  : // Estado inactivo: Gris tenue y hover elegante
-                    "text- hover:bg-[#1A1A1A] hover:text-white",
+                  ? "bg-[#E8621A]/10 text-[#E8621A] before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-[#E8621A]"
+                  : "hover:bg-[#1A1A1A] hover:text-white",
               )}
             >
               <Icon
@@ -505,15 +508,10 @@ export default function Navbar() {
     </section>
   );
 
-  /* =========================================
-     FOOTER / PERFIL (Calcado al mockup)
-     ========================================= */
   const accountCard = user ? (
     <div className="flex items-center justify-between rounded-[24px] bg-[#181818] p-2">
       <div className="flex min-w-0 items-center gap-2">
-        {/* Avatar circular */}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8621A]/15 border border-[#E8621A]/25 text-sm font-bold text-[#E8621A]">
-          {" "}
           {userInitials}
         </div>
         <div className="min-w-0 flex-1">
@@ -525,7 +523,6 @@ export default function Navbar() {
           </p>
         </div>
       </div>
-      {/* Botón de Logout */}
       <button
         type="button"
         onClick={handleLogout}
@@ -564,7 +561,6 @@ export default function Navbar() {
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-[#1C1C1C] bg-[#121212] overflow-hidden">
-      {/* Cabecera / Logo */}
       <div className="shrink-0 border-b border-[#1C1C1C] px-5 py-4">
         <Link href="/" className="block">
           <p className="font-bebas font-black text-[1.125rem] uppercase leading-none tracking-[0.06em] text-white">
@@ -576,7 +572,6 @@ export default function Navbar() {
         </Link>
       </div>
 
-      {/* Cuerpo del Menú con Scroll independiente */}
       <div className="flex-1 overflow-y-auto px-2 py-4 min-h-0 custom-scrollbar">
         {loading ? (
           loadingState
@@ -587,7 +582,6 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Footer (Tarjeta de Usuario) fijado abajo */}
       <div className="shrink-0 border-t border-[#1C1C1C] p-3">
         {!loading && accountCard}
       </div>

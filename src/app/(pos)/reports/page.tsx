@@ -130,7 +130,7 @@ export default function ReportsPage() {
   const now = new Date();
 
   return (
-    <div className="report-print-area min-h-screen bg-[#0F0F0F] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <div className="report-print-area min-h-screen px-4 py-6 text-white sm:px-6 lg:px-8 m-[5px]">
       <div className="space-y-6">
         {/* Header con título estilo Dashboard y botones originales */}
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
