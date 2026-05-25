@@ -111,13 +111,13 @@ export default function CatalogClient({
     .toLowerCase();
 
   return (
-    <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible m-[5px]">
+    <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible">
       {/* Cabecera */}
       <div className="flex w-full items-start justify-between mb-[15px]">
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
             <Link
-              href="/"
+              href="/dashboard"
               className="hover:text-white transition-colors duration-200"
             >
               Principal

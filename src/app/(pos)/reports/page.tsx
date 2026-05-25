@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatCurrency } from "../../../lib/utils";
 
 type DateRangeKey = "today" | "week" | "month";
@@ -32,7 +33,7 @@ interface SalesReport {
 
 const rangeOptions: Array<{ key: DateRangeKey; label: string }> = [
   { key: "today", label: "Hoy" },
-  { key: "week", label: "Ultimos 7 dias" },
+  { key: "week", label: "Últimos 7 días" },
   { key: "month", label: "Este mes" },
 ];
 
@@ -75,16 +76,15 @@ export default function ReportsPage() {
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState<DateRangeKey>("today");
+  const now = new Date();
 
   const handleExport = () => {
-    console.log("Exportando...");
     window.print();
   };
 
   useEffect(() => {
     async function loadReport() {
       setLoading(true);
-
       try {
         const { startDate, endDate } = getDateRange(selectedRange);
         const params = new URLSearchParams({
@@ -112,7 +112,7 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F]">
+      <div className="flex min-h-screen items-center justify-center bg-[#060606]">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-white">Cargando reportes...</p>
       </div>
     );
@@ -120,73 +120,106 @@ export default function ReportsPage() {
 
   if (!report) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F]">
+      <div className="flex min-h-screen items-center justify-center bg-[#060606]">
         <p className="text-2xl text-white">Error al cargar reportes</p>
       </div>
     );
   }
 
   const maxDailySales = Math.max(...report.salesTrend.map((point) => point.total), 1);
-  const now = new Date();
 
   return (
-    <div className="report-print-area min-h-screen px-4 py-6 text-white sm:px-6 lg:px-8 m-[5px]">
-      <div className="space-y-6">
-        {/* Header con título estilo Dashboard y botones originales */}
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1
-              className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
-              style={{
-                fontFamily: "Arial, sans-serif",
-                transform: "scale(0.85, 1.15)",
-                transformOrigin: "left center",
-                WebkitTextStroke: "1.5px white",
-              }}
-            >
-              Reportes
-            </h1>
-            <p className="mt-3 text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
-              {formatLowercaseDate(now)}
-            </p>
-          </div>
+    <div className="w-full min-h-screen bg-[#060606] px-[5px] py-8 text-white overflow-y-visible">
+      {/* Estilos de impresión: oculta todo excepto el contenedor de reportes */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #report-content,
+          #report-content * {
+            visibility: visible;
+          }
+          #report-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+          }
+          .no-print {
+            display: none !important;
+          }
+          aside, nav:not(#report-content nav), header:not(#report-content header) {
+            display: none !important;
+          }
+        }
+      `}</style>
 
-          {/* Botones de filtro y exportación (exactamente iguales al original) */}
-          <div className="flex flex-wrap gap-3">
-            {rangeOptions.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setSelectedRange(option.key)}
-                className={
-                  selectedRange === option.key
-                    ? "bt-button-primary px-4 py-3 text-xs"
-                    : "bt-button-ghost px-4 py-3 text-xs"
-                }
-              >
-                {option.label}
-              </button>
-            ))}
+      <div id="report-content">
+        {/* Cabecera */}
+        <div className="flex flex-col">
+          <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
+            <Link href="/users" className="hover:text-white transition-colors duration-200">
+              Administracion
+            </Link>
+            <span>/</span>
+            <span className="text-[#e8621a]">Reportes</span>
+          </nav>
+          <h1
+            className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
+            style={{
+              fontFamily: "Bebas Neue, sans-serif",
+              transform: "scale(0.85, 1.15)",
+              transformOrigin: "left center",
+              WebkitTextStroke: "1.5px white",
+              letterSpacing: "0.12em",
+            }}
+          >
+            Reportes
+          </h1>
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
+            {formatLowercaseDate(now)}
+          </p>
+        </div>
 
+        {/* Botones de filtro - forzado rounded 12px y Arial */}
+        <div className="flex flex-wrap gap-[5px] mt-4 mb-[5px] ml-[5px]">
+          {rangeOptions.map((option) => (
             <button
+              key={option.key}
               type="button"
-              onClick={handleExport}
-              className="bt-button-secondary no-print px-5 py-3 text-xs"
+              onClick={() => setSelectedRange(option.key)}
+              className={
+                selectedRange === option.key
+                  ? "bt-button-primary !rounded-[12px] px-4 py-2 text-xs"
+                  : "bt-button-ghost !rounded-[12px] px-4 py-2 text-xs"
+              }
+              style={{ fontFamily: "Arial, sans-serif !important", borderRadius: "12px !important" }}
             >
-              Exportar PDF
+              {option.label}
             </button>
-          </div>
-        </header>
+          ))}
+          <button
+            type="button"
+            onClick={handleExport}
+            className="bt-button-secondary no-print !rounded-[12px] px-5 py-2 text-xs"
+            style={{ fontFamily: "Arial, sans-serif !important", borderRadius: "12px !important" }}
+          >
+            Exportar PDF
+          </button>
+        </div>
 
-        {/* Tarjetas KPI (Total Ventas, Transacciones, Ticket Promedio) estilo "VENTAS HOY" */}
-        <section className="grid grid-cols-3 gap-[15px]">
+        {/* Tarjetas KPI - forzado rounded 12px y Arial con !important */}
+        <section className="grid grid-cols-3 gap-[7px] mb-[5px]">
           {/* Total Ventas */}
           <article
-            className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0" }}
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Total Ventas
               </p>
             </div>
@@ -194,7 +227,7 @@ export default function ReportsPage() {
               <p
                 className="text-[26px] font-[900] text-[#2ECC71] uppercase flex items-center h-full"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   letterSpacing: "-0.04em",
                   transform: "scaleY(1.35) translateY(15px)",
                   transformOrigin: "center center",
@@ -204,7 +237,7 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Período seleccionado
               </p>
             </div>
@@ -212,11 +245,11 @@ export default function ReportsPage() {
 
           {/* Transacciones */}
           <article
-            className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0" }}
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Transacciones
               </p>
             </div>
@@ -224,7 +257,7 @@ export default function ReportsPage() {
               <p
                 className="text-[26px] font-[900] text-[#E8621A] uppercase flex items-center h-full"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   letterSpacing: "-0.04em",
                   transform: "scaleY(1.35) translateY(15px)",
                   transformOrigin: "center center",
@@ -234,7 +267,7 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Período seleccionado
               </p>
             </div>
@@ -242,11 +275,11 @@ export default function ReportsPage() {
 
           {/* Ticket Promedio */}
           <article
-            className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0" }}
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
+            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Ticket Promedio
               </p>
             </div>
@@ -254,7 +287,7 @@ export default function ReportsPage() {
               <p
                 className="text-[26px] font-[900] text-white uppercase flex items-center h-full"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   letterSpacing: "-0.04em",
                   transform: "scaleY(1.35) translateY(15px)",
                   transformOrigin: "center center",
@@ -264,21 +297,24 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">
+              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
                 Período seleccionado
               </p>
             </div>
           </article>
         </section>
 
-        {/* Tarjeta grande: Ventas por sucursal (solo tabla, sin ranking) */}
-        <section>
-          <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4">
-            <div className="w-[88%] mx-auto flex flex-col h-full">
+        {/* Ventas por sucursal */}
+        <section className="mb-[5px]">
+          <article
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4"
+            style={{ borderRadius: "12px !important" }}
+          >
+            <div className="w-[94%] mx-auto flex flex-col h-full">
               <h2
                 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   transform: "scale(0.9, 1.1)",
                   transformOrigin: "left center",
                   textShadow: "0 0 1px rgba(255,255,255,0.3)",
@@ -290,13 +326,13 @@ export default function ReportsPage() {
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Sucursal
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Ventas
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Transacciones
                       </th>
                     </tr>
@@ -304,13 +340,13 @@ export default function ReportsPage() {
                   <tbody>
                     {report.salesByStore.map((store, idx) => (
                       <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white">
+                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {store.store}
                         </td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#2ECC71]">
+                        <td className="py-2 text-right font-mono text-[12px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {formatCurrency(store.sales)}
                         </td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#E8621A]">
+                        <td className="py-2 text-right font-mono text-[12px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {store.transactions}
                         </td>
                       </tr>
@@ -322,15 +358,18 @@ export default function ReportsPage() {
           </article>
         </section>
 
-        {/* Dos columnas: Tendencia y Top productos */}
-        <section className="grid grid-cols-2 gap-[15px]">
-          {/* Tendencia - Ventas diarias (barras) */}
-          <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4">
+        {/* Tendencia y Top productos */}
+        <section className="grid grid-cols-2 gap-[6px] mb-[5px]">
+          {/* Tendencia - Ventas diarias */}
+          <article
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4"
+            style={{ borderRadius: "12px !important" }}
+          >
             <div className="w-[88%] mx-auto flex flex-col h-full">
               <h2
                 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   transform: "scale(0.9, 1.1)",
                   transformOrigin: "left center",
                   textShadow: "0 0 1px rgba(255,255,255,0.3)",
@@ -342,8 +381,10 @@ export default function ReportsPage() {
                 {report.salesTrend.map((point) => (
                   <div key={point.date}>
                     <div className="mb-1 flex items-center justify-between gap-3">
-                      <span className="font-mono text-[11px] text-[#CBD5E1]">{point.date}</span>
-                      <span className="font-mono text-[11px] text-white">
+                      <span className="font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        {point.date}
+                      </span>
+                      <span className="font-mono text-[11px] text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         {formatCurrency(point.total)}
                       </span>
                     </div>
@@ -359,13 +400,16 @@ export default function ReportsPage() {
             </div>
           </article>
 
-          {/* Top productos más vendidos (tabla) */}
-          <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4">
+          {/* Top productos más vendidos */}
+          <article
+            className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4"
+            style={{ borderRadius: "12px !important" }}
+          >
             <div className="w-[88%] mx-auto flex flex-col h-full">
               <h2
                 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight"
                 style={{
-                  fontFamily: "Arial, sans-serif",
+                  fontFamily: "Arial, sans-serif !important",
                   transform: "scale(0.9, 1.1)",
                   transformOrigin: "left center",
                   textShadow: "0 0 1px rgba(255,255,255,0.3)",
@@ -377,16 +421,16 @@ export default function ReportsPage() {
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Modelo
                       </th>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Talla
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Cant.
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
                         Total
                       </th>
                     </tr>
@@ -394,16 +438,16 @@ export default function ReportsPage() {
                   <tbody>
                     {report.topSellers.map((item, idx) => (
                       <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white">
+                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {item.modelName}
                         </td>
-                        <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]">
+                        <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {item.size}
                         </td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]">
+                        <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {item.quantity}
                         </td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]">
+                        <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>
                           {formatCurrency(item.total)}
                         </td>
                       </tr>

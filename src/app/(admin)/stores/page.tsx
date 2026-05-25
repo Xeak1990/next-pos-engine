@@ -116,7 +116,7 @@ export default function StoresPage() {
       {/* Cabecera */}
       <div className="flex flex-col">
         <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
-          <Link href="/" className="hover:text-white transition-colors duration-200">
+          <Link href="/inventory" className="hover:text-white transition-colors duration-200">
             Operaciones
           </Link>
           <span>/</span>

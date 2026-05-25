@@ -202,7 +202,7 @@ export default async function DashboardPage() {
           {/* NUEVO: Migas de Pan (Breadcrumbs) */}
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
             <Link
-              href="/"
+              href="/dashboard"
               className="hover:text-white transition-colors duration-200"
             >
               Principal

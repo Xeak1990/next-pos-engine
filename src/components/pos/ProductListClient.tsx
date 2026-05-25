@@ -124,13 +124,13 @@ export default function ProductListClient({
   });
 
   return (
-    <section className="flex h-full flex-col m-[5px]">
+    <section className="flex h-full flex-col ">
       {/* Cabecera con migas de pan y título */}
       <div className="border-b border-[#333333] px-4 py-3">
         {/* Migas de pan */}
         <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
           <Link
-            href="/"
+            href="/dashboard"
             className="hover:text-white transition-colors duration-200"
           >
             Principal

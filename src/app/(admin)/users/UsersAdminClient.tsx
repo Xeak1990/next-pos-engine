@@ -241,8 +241,8 @@ export default function UsersAdminClient({
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
-            <Link href="/" className="hover:text-white transition-colors duration-200">
-              Principal
+            <Link href="/users" className="hover:text-white transition-colors duration-200">
+              Administracion
             </Link>
             <span>/</span>
             <span className="text-[#e8621a]">Usuarios</span>
