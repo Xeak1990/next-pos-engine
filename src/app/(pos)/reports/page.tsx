@@ -113,7 +113,9 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#060606]">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-white">Cargando reportes...</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-white">
+          Cargando reportes...
+        </p>
       </div>
     );
   }
@@ -126,7 +128,10 @@ export default function ReportsPage() {
     );
   }
 
-  const maxDailySales = Math.max(...report.salesTrend.map((point) => point.total), 1);
+  const maxDailySales = Math.max(
+    ...report.salesTrend.map((point) => point.total),
+    1,
+  );
 
   return (
     <div className="w-full min-h-screen bg-[#060606] px-[5px] py-8 text-white overflow-y-visible">
@@ -151,7 +156,9 @@ export default function ReportsPage() {
           .no-print {
             display: none !important;
           }
-          aside, nav:not(#report-content nav), header:not(#report-content header) {
+          aside,
+          nav:not(#report-content nav),
+          header:not(#report-content header) {
             display: none !important;
           }
         }
@@ -161,7 +168,10 @@ export default function ReportsPage() {
         {/* Cabecera */}
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
-            <Link href="/users" className="hover:text-white transition-colors duration-200">
+            <Link
+              href="/users"
+              className="hover:text-white transition-colors duration-200"
+            >
               Administracion
             </Link>
             <span>/</span>
@@ -185,6 +195,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Botones de filtro - forzado rounded 12px y Arial */}
+        {/* Botones de filtro - Aplicado Arial y rounded 12px */}
         <div className="flex flex-wrap gap-[5px] mt-4 mb-[5px] ml-[5px]">
           {rangeOptions.map((option) => (
             <button
@@ -196,7 +207,10 @@ export default function ReportsPage() {
                   ? "bt-button-primary !rounded-[12px] px-4 py-2 text-xs"
                   : "bt-button-ghost !rounded-[12px] px-4 py-2 text-xs"
               }
-              style={{ fontFamily: "Arial, sans-serif !important", borderRadius: "12px !important" }}
+              style={{
+                fontFamily: "Arial, sans-serif",
+                borderRadius: "12px",
+              }}
             >
               {option.label}
             </button>
@@ -205,7 +219,10 @@ export default function ReportsPage() {
             type="button"
             onClick={handleExport}
             className="bt-button-secondary no-print !rounded-[12px] px-5 py-2 text-xs"
-            style={{ fontFamily: "Arial, sans-serif !important", borderRadius: "12px !important" }}
+            style={{
+              fontFamily: "Arial, sans-serif",
+              borderRadius: "12px",
+            }}
           >
             Exportar PDF
           </button>
@@ -216,10 +233,18 @@ export default function ReportsPage() {
           {/* Total Ventas */}
           <article
             className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
+            style={{
+              height: "125px",
+              minHeight: "unset",
+              padding: "0",
+              borderRadius: "12px !important",
+            }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Total Ventas
               </p>
             </div>
@@ -237,7 +262,10 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Período seleccionado
               </p>
             </div>
@@ -246,10 +274,18 @@ export default function ReportsPage() {
           {/* Transacciones */}
           <article
             className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
+            style={{
+              height: "125px",
+              minHeight: "unset",
+              padding: "0",
+              borderRadius: "12px !important",
+            }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Transacciones
               </p>
             </div>
@@ -267,7 +303,10 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Período seleccionado
               </p>
             </div>
@@ -276,10 +315,18 @@ export default function ReportsPage() {
           {/* Ticket Promedio */}
           <article
             className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative"
-            style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}
+            style={{
+              height: "125px",
+              minHeight: "unset",
+              padding: "0",
+              borderRadius: "12px !important",
+            }}
           >
             <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-              <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Ticket Promedio
               </p>
             </div>
@@ -297,7 +344,10 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-              <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>
+              <p
+                className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight"
+                style={{ fontFamily: "Arial, sans-serif !important" }}
+              >
                 Período seleccionado
               </p>
             </div>
@@ -326,27 +376,48 @@ export default function ReportsPage() {
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Sucursal
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Ventas
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Transacciones
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {report.salesByStore.map((store, idx) => (
-                      <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <tr
+                        key={idx}
+                        className="border-b border-[#222222] last:border-0"
+                      >
+                        <td
+                          className="py-2 text-left font-sans text-[13px] font-semibold text-white"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {store.store}
                         </td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        <td
+                          className="py-2 text-right font-mono text-[12px] text-[#2ECC71]"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {formatCurrency(store.sales)}
                         </td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        <td
+                          className="py-2 text-right font-mono text-[12px] text-[#E8621A]"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {store.transactions}
                         </td>
                       </tr>
@@ -381,17 +452,25 @@ export default function ReportsPage() {
                 {report.salesTrend.map((point) => (
                   <div key={point.date}>
                     <div className="mb-1 flex items-center justify-between gap-3">
-                      <span className="font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <span
+                        className="font-mono text-[11px] text-[#CBD5E1]"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         {point.date}
                       </span>
-                      <span className="font-mono text-[11px] text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <span
+                        className="font-mono text-[11px] text-white"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         {formatCurrency(point.total)}
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-[#1F1F1F]">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-[#E8621A] to-[#F59E0B]"
-                        style={{ width: `${Math.round((point.total / maxDailySales) * 100)}%` }}
+                        style={{
+                          width: `${Math.round((point.total / maxDailySales) * 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -421,33 +500,60 @@ export default function ReportsPage() {
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Modelo
                       </th>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Talla
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Cant.
                       </th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <th
+                        className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase"
+                        style={{ fontFamily: "Arial, sans-serif !important" }}
+                      >
                         Total
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {report.topSellers.map((item, idx) => (
-                      <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                      <tr
+                        key={idx}
+                        className="border-b border-[#222222] last:border-0"
+                      >
+                        <td
+                          className="py-2 text-left font-sans text-[13px] font-semibold text-white"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {item.modelName}
                         </td>
-                        <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        <td
+                          className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {item.size}
                         </td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        <td
+                          className="py-2 text-right font-mono text-[11px] text-[#E8621A]"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {item.quantity}
                         </td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>
+                        <td
+                          className="py-2 text-right font-mono text-[11px] text-[#2ECC71]"
+                          style={{ fontFamily: "Arial, sans-serif !important" }}
+                        >
                           {formatCurrency(item.total)}
                         </td>
                       </tr>

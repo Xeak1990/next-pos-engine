@@ -233,10 +233,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* GRUPO DERECHO: Botones (Se queda igual) */}
-        <div className="flex items-center gap-3 mt-1">
+        <div className="flex items-center gap-[5px] mt-1">
           <Link
             href="/reports"
-            className="inline-flex items-center gap-2 rounded-[14px] border border-[#333333] bg-[#111111] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#191919]"
+            className="flex items-center gap-3 mb-[2.5px] rounded-[10px] border border-[#333333] bg-[#1A1A1A] px-[10px] py-[7px] text-sm text-[#D1D5DB]"
           >
             📊 Reportes
           </Link>

@@ -168,14 +168,14 @@ export default function StoresPage() {
             {/* Fila superior con título y botones alineados verticalmente */}
             <div className="flex justify-between items-center gap-2">
               <h2 className="text-xl font-semibold text-white leading-tight">{store.name}</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-[5px]">
                 <button
                   onClick={() => {
                     setEditingStore(store);
                     setForm({ name: store.name, location: store.location });
                     setModalOpen(true);
                   }}
-                  className="bt-button-ghost px-4 py-2 text-xs rounded-[12px] border border-[#333333] text-[#D1D5DB] hover:bg-[#333333]/20 transition-colors duration-200"
+                  className="bt-button-ghost px-4 py-2 text-xs rounded-[12px] border border-[#333333] text-[#D1D5DB] hover:bg-[#333333]/20 transition-colors duration-200 "
                   style={{ fontFamily: "Arial, sans-serif" }}
                 >
                   Editar
@@ -191,8 +191,8 @@ export default function StoresPage() {
             </div>
             <p className="text-sm text-[#9CA3AF]">{store.location}</p>
             <div className="mt-4 flex justify-between text-sm text-[#CBD5E1]">
-              <span>📦 Inventarios: {store._count?.inventory ?? 0}</span>
-              <span>👥 Usuarios: {store._count?.users ?? 0}</span>
+              <span> Inventarios: {store._count?.inventory ?? 0}</span>
+              <span> Usuarios: {store._count?.users ?? 0}</span>
             </div>
           </article>
         ))}
