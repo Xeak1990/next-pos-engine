@@ -70,6 +70,9 @@ export default function StoresPage() {
           const data = await res.json();
           setStores(data);
         } else if (res.status === 403) {
+          alert(
+            "No tienes permisos para ver sucursales (solo administradores)",
+          );
           router.push("/dashboard");
         }
       } catch (error) {
@@ -105,7 +108,8 @@ export default function StoresPage() {
   };
 
   const handleDisable = async (id: string) => {
-    if (!confirm("¿Deshabilitar esta sucursal? Se ocultará del listado.")) return;
+    if (!confirm("¿Deshabilitar esta sucursal? Se ocultará del listado."))
+      return;
     alert("Funcionalidad en desarrollo: deshabilitar sucursal");
   };
 
@@ -116,7 +120,10 @@ export default function StoresPage() {
       {/* Cabecera */}
       <div className="flex flex-col">
         <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
-          <Link href="/inventory" className="hover:text-white transition-colors duration-200">
+          <Link
+            href="/inventory"
+            className="hover:text-white transition-colors duration-200"
+          >
             Operaciones
           </Link>
           <span>/</span>
@@ -167,7 +174,9 @@ export default function StoresPage() {
           >
             {/* Fila superior con título y botones alineados verticalmente */}
             <div className="flex justify-between items-center gap-2">
-              <h2 className="text-xl font-semibold text-white leading-tight">{store.name}</h2>
+              <h2 className="text-xl font-semibold text-white leading-tight">
+                {store.name}
+              </h2>
               <div className="flex gap-[5px]">
                 <button
                   onClick={() => {
@@ -210,13 +219,22 @@ export default function StoresPage() {
             <div className="w-[88%] mx-auto px-[20px] py-[15px] space-y-[8px]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <p
+                    className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     {editingStore ? "Editar sucursal" : "Nueva sucursal"}
                   </p>
-                  <h2 className="mt-1 text-4xl text-white" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <h2
+                    className="mt-1 text-4xl text-white"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     {editingStore ? "Editar Sucursal" : "Crear Sucursal"}
                   </h2>
-                  <p className="mt-1 text-sm text-[#9CA3AF]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <p
+                    className="mt-1 text-sm text-[#9CA3AF]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     {editingStore
                       ? "Modifica los datos de la sucursal."
                       : "Ingresa el nombre y ubicación del nuevo punto de venta."}
@@ -234,7 +252,10 @@ export default function StoresPage() {
 
               <form className="space-y-[8px]" onSubmit={handleSubmit}>
                 <div>
-                  <label className="block text-sm text-[#D1D5DB] mb-[5px]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <label
+                    className="block text-sm text-[#D1D5DB] mb-[5px]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     Nombre
                   </label>
                   <input
@@ -248,13 +269,18 @@ export default function StoresPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[#D1D5DB] mb-[5px]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <label
+                    className="block text-sm text-[#D1D5DB] mb-[5px]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     Ubicación
                   </label>
                   <input
                     type="text"
                     value={form.location}
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, location: e.target.value })
+                    }
                     className="bt-input w-full px-4 py-3"
                     placeholder="Ej. Centro Histórico, Xalapa, Ver."
                     required
@@ -286,4 +312,4 @@ export default function StoresPage() {
       )}
     </div>
   );
-} 
+}

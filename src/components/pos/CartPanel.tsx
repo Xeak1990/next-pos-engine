@@ -72,9 +72,9 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
   };
 
   return (
-    <section className="bt-panel flex h-full flex-col overflow-hidden bg-[#111111]">
+    <section className="bt-panel flex flex-col overflow-hidden bg-[#111111] h-full max-h-full">
       <div className="w-[95%] mx-auto flex flex-col h-full">
-        <header className="border-b border-[#333333] py-3">
+        <header className="border-b border-[#333333] py-3 flex-shrink-0">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[#94A3B8]">Venta Activa</p>
             <h2 className="mt-3 text-3xl tracking-wider text-white">Carrito de Venta</h2>
@@ -90,7 +90,8 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
           </div>
         </header>
 
-        <div className="custom-scrollbar flex-1 overflow-y-auto py-[5px]">
+        {/* Lista de productos – con scroll interno */}
+        <div className="custom-scrollbar flex-1 overflow-y-auto py-[5px] min-h-0">
           {items.length > 0 ? (
             <div className="space-y-[5px]">
               {items.map((item: CartItemSummary) => (
@@ -164,9 +165,9 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
           )}
         </div>
 
-        <footer className="py-[5px]">
+        {/* Footer con el resumen y botones – fijo abajo */}
+        <footer className="py-[5px] flex-shrink-0">
           <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A]">
-            {/* Contenedor único con 95% de ancho y centrado */}
             <div className="w-[95%] mx-auto py-[5px] space-y-[5px]">
               <div className="flex items-center justify-between text-sm text-[#9CA3AF]">
                 <span>Subtotal</span>
@@ -201,7 +202,6 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                     style={{ fontFamily: "Arial, sans-serif" }}
                     placeholder={discountType === "percentage" ? "%" : "$"}
                   />
-                  {/* Se ha eliminado el span que mostraba % o $ fuera del campo */}
                 </div>
               </div>
 

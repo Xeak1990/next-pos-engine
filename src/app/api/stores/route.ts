@@ -8,7 +8,7 @@ export async function GET() {
   const cookieStore = await cookies();
   const token = cookieStore.get("bt_auth")?.value;
   const payload = token ? await verifyAuthToken(token) : null;
-  if (!payload || payload.role !== "ADMIN") {
+  if (!payload || payload.role?.toUpperCase() !== "ADMIN") {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
   const stores = await prisma.store.findMany({
@@ -29,7 +29,10 @@ export async function POST(request: NextRequest) {
   }
   const { name, location } = await request.json();
   if (!name || !location) {
-    return NextResponse.json({ error: "Nombre y ubicación requeridos" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Nombre y ubicación requeridos" },
+      { status: 400 },
+    );
   }
   const store = await prisma.store.create({
     data: { name, location },
