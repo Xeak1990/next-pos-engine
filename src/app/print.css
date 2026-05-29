@@ -1,0 +1,44 @@
+/* ========== ESTILOS PARA IMPRESIÓN DE TICKET ========== */
+@media print {
+  /* Ocultar todo excepto el ticket clonado */
+  body * {
+    display: none !important;
+  }
+  .ticket-print-area,
+  .ticket-print-area * {
+    display: block !important;
+  }
+  .ticket-print-area {
+    display: block !important;
+    position: relative !important;
+    margin: 0 auto !important;
+    padding: 0.5rem !important;
+    background: white !important;
+    width: 380px !important;
+    max-width: 380px !important;
+    box-shadow: none !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  /* Forzar justify-between para elementos que lo necesiten */
+  .ticket-print-area .flex.justify-between {
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+  /* Asegurar que los textos y precios mantengan su alineación */
+  .ticket-print-area .text-right {
+    text-align: right !important;
+  }
+  /* Eliminar márgenes que generen páginas extra */
+  @page {
+    size: auto;
+    margin: 0;
+  }
+  html, body {
+    height: auto;
+    margin: 0;
+    padding: 0;
+  }
+}

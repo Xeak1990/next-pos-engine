@@ -177,7 +177,7 @@ export default function CatalogClient({
                     paddingLeft: "8px",
                     paddingRight: "8px",
                     marginBottom: "25px",
-                  }} // ← separación extra de 25px
+                  }}
                 >
                   <option value="">Todas</option>
                   {filterOptions.stores.map((store) => (
@@ -188,7 +188,7 @@ export default function CatalogClient({
                 </select>
               </div>
 
-              {/* Categoría */}
+              {/* Categoría - CORREGIDO: key única para cada opción */}
               <div>
                 <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
                   Categoría
@@ -207,8 +207,8 @@ export default function CatalogClient({
                   }}
                 >
                   <option value="">Todas</option>
-                  {filterOptions.categories.map((cat) => (
-                    <option key={cat} value={cat}>
+                  {filterOptions.categories.map((cat, index) => (
+                    <option key={`cat-${index}`} value={cat}>
                       {cat}
                     </option>
                   ))}

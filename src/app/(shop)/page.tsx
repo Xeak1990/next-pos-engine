@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 
 type ProductWithRelations = Prisma.ProductGetPayload<{
   include: {
+    category: true; // ← IMPORTANTE: incluir la relación Category
     variants: {
       include: {
         inventory: { include: { store: true } };
@@ -13,7 +14,6 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
   };
 }>;
 
-// ✅ Definir tipo para filterOptions
 interface FilterOptions {
   stores: string[];
   categories: string[];
@@ -22,11 +22,12 @@ interface FilterOptions {
 
 export default async function ShopPage() {
   let serializedProducts: Product[] = [];
-  let filterOptions: FilterOptions = { stores: [], categories: [], sizes: [] }; // ✅ tipado explícito
+  let filterOptions: FilterOptions = { stores: [], categories: [], sizes: [] };
 
   try {
     const productsFromDb = (await prisma.product.findMany({
       include: {
+        category: true, // ← incluir la categoría relacionada
         variants: {
           include: {
             inventory: { include: { store: true } },
@@ -39,7 +40,7 @@ export default async function ShopPage() {
       id: p.id,
       name: p.name,
       brand: p.brand,
-      category: p.category,
+      category: p.category.name, // ← ahora el nombre viene de la relación
       variants: p.variants.map((v) => ({
         id: v.id,
         sku: v.sku,
@@ -87,8 +88,6 @@ export default async function ShopPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8 text-white m-[5px]">
-      {" "}
-      {/* ← sin min-h-screen */}
       <header className="mb-10"></header>
       <CatalogClient
         initialProducts={serializedProducts}
