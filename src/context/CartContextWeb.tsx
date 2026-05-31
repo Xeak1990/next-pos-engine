@@ -10,18 +10,23 @@ import {
 
 export interface CartItemWeb {
   productId: string;
+  variantId: string;
   name: string;
   price: number;
   quantity: number;
   image?: string;
   size?: string;
+  storeId: string;
+  storeName: string;
 }
 
 interface CartContextType {
   items: CartItemWeb[];
   totalItems: number;
   totalPrice: number;
-  addItem: (item: CartItemWeb) => void;
+  storeId: string | null;
+  storeName: string | null;
+  addItem: (item: CartItemWeb) => { success: boolean; message?: string };
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -30,7 +35,6 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProviderWeb({ children }: { children: ReactNode }) {
-  // ✅ Inicialización perezosa: lee localStorage una sola vez al crear el estado
   const [items, setItems] = useState<CartItemWeb[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("cartWeb");
@@ -46,29 +50,36 @@ export function CartProviderWeb({ children }: { children: ReactNode }) {
     return [];
   });
 
-  // ✅ Efecto solo para persistir los cambios (no para cargar inicialmente)
   useEffect(() => {
     localStorage.setItem("cartWeb", JSON.stringify(items));
   }, [items]);
 
-  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
-  const totalPrice = items.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  const storeId = items.length > 0 ? items[0].storeId : null;
+  const storeName = items.length > 0 ? items[0].storeName : null;
 
-  const addItem = (newItem: CartItemWeb) => {
+  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
+  const totalPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+  const addItem = (newItem: CartItemWeb): { success: boolean; message?: string } => {
+    if (items.length > 0 && newItem.storeId !== items[0].storeId) {
+      return {
+        success: false,
+        message: `Solo puedes agregar productos de la misma sucursal. Actualmente tu carrito tiene productos de ${items[0].storeName}.`,
+      };
+    }
+
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === newItem.productId);
+      const existing = prev.find((i) => i.variantId === newItem.variantId);
       if (existing) {
         return prev.map((i) =>
-          i.productId === newItem.productId
+          i.variantId === newItem.variantId
             ? { ...i, quantity: i.quantity + newItem.quantity }
             : i
         );
       }
       return [...prev, newItem];
     });
+    return { success: true };
   };
 
   const removeItem = (productId: string) => {
@@ -93,6 +104,8 @@ export function CartProviderWeb({ children }: { children: ReactNode }) {
         items,
         totalItems,
         totalPrice,
+        storeId,
+        storeName,
         addItem,
         removeItem,
         updateQuantity,

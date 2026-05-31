@@ -2,18 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactElement, type SVGProps } from "react";
+import { type ReactElement, type SVGProps } from "react";
 import { cn } from "../../lib/utils";
 
 type UserRole = "ADMIN" | "MANAGER" | "CASHIER";
 
 type UserData = {
-  userId: string;
   name: string;
   email: string;
   role: UserRole;
-  storeId: string | null;
-  storeName?: string | null;
 };
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactElement;
@@ -33,7 +30,7 @@ type NavSection = {
 const ALL_ROLES: UserRole[] = ["ADMIN", "MANAGER", "CASHIER"];
 
 /* =========================================
-   ICONOS SVG (Mismos trazos y grosores)
+   ICONOS SVG (mismos trazos y grosores)
    ========================================= */
 function DashboardIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -379,46 +376,16 @@ function getRoleLabel(role: UserRole) {
   return "Caja";
 }
 
-export default function Navbar() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+interface NavbarProps {
+  user: UserData;
+}
 
-  useEffect(() => {
-    const controller = new AbortController();
-    async function fetchUser() {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/auth/me", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          setUser(null);
-          return;
-        }
-        const data = await response.json();
-        const userData = data.customer;
-        if (userData?.role)
-          userData.role = userData.role.toUpperCase() as UserRole;
-        setUser(userData);
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          setUser(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    }
-    fetchUser();
-    return () => controller.abort();
-  }, []);
+export default function Navbar({ user }: NavbarProps) {
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch (error) {
       console.error("Error en logout:", error);
     } finally {
@@ -429,31 +396,21 @@ export default function Navbar() {
   };
 
   // Filtrar secciones según el rol del usuario
-  const visibleSections = user
-    ? navigationSections
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) => item.roles.includes(user.role)),
-        }))
-        .filter((section) => section.items.length > 0)
-    : [];
+  const visibleSections = navigationSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.roles.includes(user.role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
-  // Cálculo seguro de iniciales (evita el error .split)
-  const userInitials = (() => {
-    if (user?.name) {
-      return user.name
-        .split(" ")
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return "AG";
-  })();
+  // Iniciales del usuario
+  const userInitials = user.name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const renderSection = (section: NavSection, compact = false) => (
     <section key={section.title} className="mb-4">
@@ -508,7 +465,7 @@ export default function Navbar() {
     </section>
   );
 
-  const accountCard = user ? (
+  const accountCard = (
     <div className="flex items-center justify-between rounded-[24px] bg-[#181818] p-2">
       <div className="flex min-w-0 items-center gap-2">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8621A]/15 border border-[#E8621A]/25 text-sm font-bold text-[#E8621A]">
@@ -532,31 +489,6 @@ export default function Navbar() {
         <PowerIcon className="h-[18px] w-[18px]" />
       </button>
     </div>
-  ) : (
-    <Link
-      href="/login"
-      className="bt-button-primary flex w-full justify-center px-5 py-3 text-xs rounded-lg"
-    >
-      Ingresar
-    </Link>
-  );
-
-  const loadingState = (
-    <div className="space-y-6">
-      {Array.from({ length: 3 }).map((_, sectionIndex) => (
-        <div key={sectionIndex}>
-          <div className="h-2 w-20 rounded bg-white/5 ml-4" />
-          <div className="mt-3 flex flex-col gap-1.5">
-            {Array.from({ length: 2 }).map((__, itemIndex) => (
-              <div
-                key={itemIndex}
-                className="h-10 rounded-lg bg-white/[0.02]"
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 
   return (
@@ -573,17 +505,13 @@ export default function Navbar() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-4 min-h-0 custom-scrollbar">
-        {loading ? (
-          loadingState
-        ) : (
-          <div className="flex flex-col gap-5">
-            {visibleSections.map((section) => renderSection(section))}
-          </div>
-        )}
+        <div className="flex flex-col gap-5">
+          {visibleSections.map((section) => renderSection(section))}
+        </div>
       </div>
 
       <div className="shrink-0 border-t border-[#1C1C1C] p-3">
-        {!loading && accountCard}
+        {accountCard}
       </div>
     </aside>
   );

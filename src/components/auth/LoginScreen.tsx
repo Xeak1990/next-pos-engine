@@ -2,35 +2,20 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const demoUsers = [
-  {
-    label: "ADMIN",
-    role: "ADMIN",
-    email: "admin@bentenison.mx",
-    password: "1234",
-  },
-  {
-    label: "GERENTE",
-    role: "MANAGER",
-    email: "gerente@bentenison.mx",
-    password: "1234",
-  },
-  {
-    label: "CAJERO",
-    role: "CASHIER",
-    email: "cajero@bentenison.mx",
-    password: "1234",
-  },
-  {
-    label: "CLIENTE", // nueva cuenta demo
-    role: "CUSTOMER",
-    email: "cliente@bentenison.mx",
-    password: "cliente123",
-  },
+  { label: "ADMIN", role: "ADMIN", email: "admin@bentenison.mx", password: "1234" },
+  { label: "GERENTE", role: "MANAGER", email: "gerente@bentenison.mx", password: "1234" },
+  { label: "CAJERO", role: "CASHIER", email: "cajero@bentenison.mx", password: "1234" },
+  { label: "CLIENTE", role: "CUSTOMER", email: "cliente@bentenison.mx", password: "cliente123" },
 ];
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") || "/";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -44,31 +29,33 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const isCustomer = email === "cliente@bentenison.mx" || email.includes("@bentenison.mx");
+      let endpoint = "/api/auth/login";
+      if (isCustomer) endpoint = "/api/auth/customer/login";
+
+      const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, rememberMe }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || "Correo o contrasena incorrectos.");
+        setError(data.error || "Correo o contraseña incorrectos.");
         return;
       }
 
-      const role = data.user?.role as string | undefined;
-      const destination =
-        role === "CASHIER"
-          ? "/terminal"
-          : role === "CUSTOMER"
-            ? "/"
-            : "/dashboard";
-      window.location.href = destination;
+      if (isCustomer) {
+        window.location.href = returnUrl; // Forzar recarga completa
+      } else {
+        const role = data.user?.role as string | undefined;
+        const destination = role === "CASHIER" ? "/terminal" : role === "CUSTOMER" ? "/" : "/dashboard";
+        window.location.href = destination;
+      }
     } catch (submitError) {
       console.error(submitError);
-      setError("Error al iniciar sesion. Intenta de nuevo mas tarde.");
+      setError("Error al iniciar sesión. Intenta de nuevo más tarde.");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,7 +86,7 @@ export default function LoginScreen() {
               BEN <span className="text-[#E8621A]">TEN</span>ISON
             </h1>
             <p className="mt-4 text-base tracking-[0.18em] text-[#C9D8EA] sm:text-lg">
-              Sistema de gestion omnical
+              Sistema de gestión omnicanal
             </p>
           </header>
 
@@ -118,7 +105,7 @@ export default function LoginScreen() {
                     textShadow: "0 0 1px #ffffff",
                   }}
                 >
-                  Iniciar Sesion
+                  Iniciar Sesión
                 </h2>
                 <p className="mt-4 text-sm text-[#9CA3AF]">
                   Ingresa tus credenciales para acceder al sistema.
@@ -126,7 +113,6 @@ export default function LoginScreen() {
               </div>
             </div>
 
-            {/* Cambiado space-y-5 por un flex-col con un gap mayor para separar los bloques principales */}
             <form className="flex flex-col gap-[20px]" onSubmit={handleSubmit}>
               {error && (
                 <div className="rounded-[12px] border border-[#E8621A]/30 bg-[#E8621A]/10 px-4 py-3 text-sm text-[#FED7AA]">
@@ -134,10 +120,10 @@ export default function LoginScreen() {
                 </div>
               )}
 
-              {/* --- CAMPO: CORREO ELECTRÓNICO --- */}
+              {/* Campo correo */}
               <div className="w-full flex flex-col items-center gap-[5px]">
                 <span className="w-full max-w-[83%] text-left !text-[12px] !font-sans font-semibold uppercase tracking-widest text-[#9CA3AF] !pl-0">
-                  Correo Electronico
+                  Correo Electrónico
                 </span>
                 <input
                   type="email"
@@ -150,12 +136,11 @@ export default function LoginScreen() {
                 />
               </div>
 
-              {/* --- CAMPO: CONTRASEÑA --- */}
+              {/* Campo contraseña */}
               <div className="w-full flex flex-col items-center gap-[5px]">
                 <span className="w-full max-w-[83%] text-left !text-[12px] !font-sans font-semibold uppercase tracking-widest !text-[#9CA3AF] !pl-0">
-                  Contrasena
+                  Contraseña
                 </span>
-
                 <div className="w-full flex flex-col gap-[5px]">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -166,25 +151,21 @@ export default function LoginScreen() {
                     style={{ fontFamily: "Arial, sans-serif" }}
                     required
                   />
-
-                  {/* Checkbox de Mostrar contraseña con separación de 5px (gap del contenedor padre) */}
                   <div className="w-full max-w-[85%] mx-auto flex items-center justify-start pl-0.5">
                     <label className="flex items-center gap-2 cursor-pointer select-none !text-[15px] !text-gray-400 !font-sans">
                       <input
                         type="checkbox"
                         checked={showPassword}
-                        onChange={(event) =>
-                          setShowPassword(event.target.checked)
-                        }
+                        onChange={(event) => setShowPassword(event.target.checked)}
                         className="h-3.5 w-3.5 rounded border border-[#333333] bg-[#242424] text-[#E8621A] focus:ring-0 accent-[#E8621A] cursor-pointer"
                       />
-                      Mostrar contrasena
+                      Mostrar contraseña
                     </label>
                   </div>
                 </div>
               </div>
 
-              {/* --- SECCIÓN RECORDARME Y OLVIDASTE CONTRASEÑA --- */}
+              {/* Recordarme */}
               <div className="w-full max-w-[85%] mx-auto mt-[5px] flex flex-row items-center justify-between text-sm text-[#D1D5DB]">
                 <label className="flex items-center gap-3 cursor-pointer select-none !font-sans !text-[15px] !text-gray-400">
                   <input
@@ -195,7 +176,6 @@ export default function LoginScreen() {
                   />
                   Recordarme
                 </label>
-
                 <button
                   type="button"
                   className="w-fit bg-transparent p-0 !text-[15px] text-[#E8621A] shadow-none hover:text-[#F07330]"
@@ -209,11 +189,11 @@ export default function LoginScreen() {
                     transform: "none",
                   }}
                 >
-                  Olvidaste tu contrasena?
+                  ¿Olvidaste tu contraseña?
                 </button>
               </div>
 
-              {/* --- BOTÓN DE ENTRAR --- */}
+              {/* Botón entrar */}
               <div className="w-full flex justify-center mt-[5px]">
                 <button
                   type="submit"
@@ -232,30 +212,23 @@ export default function LoginScreen() {
               </div>
             </form>
 
-            {/* --- ENLACE PARA CREAR CUENTA --- */}
+            {/* Enlace a registro */}
             <div className="w-full flex justify-center mt-4">
               <p className="text-sm text-[#9CA3AF]">
                 ¿No tienes cuenta?{" "}
-                <Link
-                  href="/register"
-                  className="text-[#E8621A] hover:underline"
-                >
+                <Link href="/register" className="text-[#E8621A] hover:underline">
                   Crear cuenta
                 </Link>
               </p>
             </div>
 
-            {/* --- RECTÁNGULO CONTENEDOR PRINCIPAL DE LA SECCIÓN DEMO --- */}
+            {/* Cuentas demo */}
             <div className="w-full max-w-[75%] mx-auto mt-[25px] rounded-[12px] border border-[#333333] bg-[#242424] p-[18px_20px]">
-              {/* El título de la sección alineado con el inicio de los botones */}
               <div className="mb-3.5 flex items-center justify-start">
                 <p className="text-[10px] uppercase tracking-[0.18em] !text-[#9CA3AF] font-semibold !font-sans">
                   CUENTAS DE DEMOSTRACIÓN (CONTRASEÑA: 1234)
                 </p>
               </div>
-
-              {/* --- LISTA DE BOTONES (Sin doble encapsulado) --- */}
-              {/* Los botones van directos, separados por un gap sutil */}
               <div className="flex flex-col gap-[8px] w-full">
                 {demoUsers.map((demo) => (
                   <button
@@ -266,19 +239,15 @@ export default function LoginScreen() {
                     style={{
                       display: "flex",
                       flexDirection: "row",
-                      justifyContent:
-                        "space-between" /* Cambiado a space-between directo */,
+                      justifyContent: "space-between",
                       alignItems: "center",
                       minHeight: "auto",
                       transform: "none",
                     }}
                   >
-                    {/* LADO IZQUIERDO: Correo electrónico en gris */}
                     <span className="font-mono text-[13px] text-[#9CA3AF] tracking-wide text-left">
                       {demo.email}
                     </span>
-
-                    {/* LADO DERECHO: El Rol en naranja brillante */}
                     <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#E8621A] text-right font-bebas">
                       {demo.label}
                     </span>
@@ -290,7 +259,7 @@ export default function LoginScreen() {
         </div>
 
         <footer className="mt-8 pb-2 text-center text-sm text-[#94A3B8]">
-          Ben Tenison &copy; 2026 - ISC Programacion Web - ITSX
+          Ben Tenison &copy; 2026 - ISC Programación Web - ITSX
         </footer>
       </div>
     </main>

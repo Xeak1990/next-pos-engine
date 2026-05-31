@@ -1,33 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
-import { verifyAuthToken } from "../../../../lib/token-utils";
-import { cookies } from "next/headers";
 
-export async function PATCH(
+export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }   // ← importante: params es Promesa
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await context.params;           // ← await aquí
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get("bt_auth")?.value;
-  if (!token) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-  const payload = await verifyAuthToken(token);
-  if (!payload || (payload.role !== "ADMIN" && payload.role !== "MANAGER")) {
-    return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
-  }
-
-  const { status } = await request.json();
-  const allowed = ["pending", "paid", "shipped", "delivered", "cancelled"];
-  if (!allowed.includes(status)) {
-    return NextResponse.json({ error: "Estado no válido" }, { status: 400 });
-  }
-
-  const order = await prisma.order.update({
+  const { id } = await params;
+  const order = await prisma.order.findUnique({
     where: { id },
-    data: { status },
+    include: { items: true },
   });
+  if (!order) {
+    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
   return NextResponse.json(order);
 }
