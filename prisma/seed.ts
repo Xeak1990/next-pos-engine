@@ -1,322 +1,324 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role, Store } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// --------------------------------------------------------------
+// Helpers
+// --------------------------------------------------------------
 async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
 
-async function main() {
-  console.log("Iniciando el sembrado de datos...");
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-  // Crear sucursales
-  const centroStore = await prisma.store.upsert({
-    where: { name: "Centro Xalapa" },
-    update: {},
-    create: {
-      name: "Centro Xalapa",
-      location: "Centro Histórico, Xalapa, Ver.",
-    },
+function randomDateUpTo60DaysBack(now: Date): Date {
+  const daysAgo = randomInt(0, 59);
+  const target = new Date(now);
+  target.setDate(now.getDate() - daysAgo);
+  target.setHours(randomInt(8, 22), randomInt(0, 59), randomInt(0, 59), 0);
+  return target;
+}
+
+// --------------------------------------------------------------
+// Generación de ventas con control de stock
+// --------------------------------------------------------------
+async function generateFakeSales(totalTarget: number = 50) {
+  console.log(`🌱 Generando ${totalTarget} ventas controladas...`);
+
+  const stores = await prisma.store.findMany();
+  if (stores.length === 0) throw new Error("No hay sucursales");
+
+  let variants = await prisma.variant.findMany({
+    include: { inventory: true },
   });
+  if (variants.length === 0) throw new Error("No hay variantes");
 
-  const plazaAmericasStore = await prisma.store.upsert({
-    where: { name: "Plaza Américas" },
-    update: {},
-    create: {
-      name: "Plaza Américas",
-      location: "Plaza Américas, Xalapa, Ver.",
-    },
-  });
+  const now = new Date();
+  let salesCreated = 0;
+  let hasTodaySale = false;
+  const todayStr = now.toISOString().split('T')[0];
 
-  // Sucursal faltante: Plaza Crystal
-  const plazaCrystalStore = await prisma.store.upsert({
-    where: { name: "Plaza Crystal" },
-    update: {},
-    create: {
-      name: "Plaza Crystal",
-      location: "Plaza Crystal, Xalapa, Ver.",
-    },
-  });
+  for (let i = 0; i < totalTarget && salesCreated < totalTarget; i++) {
+    const createdAt = randomDateUpTo60DaysBack(now);
+    const store = stores[Math.floor(Math.random() * stores.length)];
 
-  console.log("Sucursales creadas:", centroStore.name, plazaAmericasStore.name, plazaCrystalStore.name);
-
-  // Contraseña común
-  const hashedPassword = await hashPassword("1234");
-
-  // Usuarios existentes
-  const adminUser = await prisma.user.upsert({
-    where: { email: "admin@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Administrador",
-      email: "admin@bentenison.mx",
-      password: hashedPassword,
-      role: "ADMIN",
-      isActive: true,
-    },
-  });
-
-  const managerCentro = await prisma.user.upsert({
-    where: { email: "gerente@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Gerente Centro",
-      email: "gerente@bentenison.mx",
-      password: hashedPassword,
-      role: "MANAGER",
-      storeId: centroStore.id,
-      isActive: true,
-    },
-  });
-
-  const cashierPlaza = await prisma.user.upsert({
-    where: { email: "cajero@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Cajero Plaza",
-      email: "cajero@bentenison.mx",
-      password: hashedPassword,
-      role: "CASHIER",
-      storeId: plazaAmericasStore.id,
-      isActive: true,
-    },
-  });
-
-  // Nuevo personal para Plaza Crystal
-  const managerCrystal = await prisma.user.upsert({
-    where: { email: "gerente.crystal@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Gerente Crystal",
-      email: "gerente.crystal@bentenison.mx",
-      password: hashedPassword,
-      role: "MANAGER",
-      storeId: plazaCrystalStore.id,
-      isActive: true,
-    },
-  });
-
-  const cashierCrystal = await prisma.user.upsert({
-    where: { email: "cajero.crystal@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Cajero Crystal",
-      email: "cajero.crystal@bentenison.mx",
-      password: hashedPassword,
-      role: "CASHIER",
-      storeId: plazaCrystalStore.id,
-      isActive: true,
-    },
-  });
-
-  // Un cajero adicional para Centro Xalapa
-  const cashierCentro2 = await prisma.user.upsert({
-    where: { email: "cajero.centro2@bentenison.mx" },
-    update: {},
-    create: {
-      name: "Cajero Centro",
-      email: "cajero.centro2@bentenison.mx",
-      password: hashedPassword,
-      role: "CASHIER",
-      storeId: centroStore.id,
-      isActive: true,
-    },
-  });
-
-  console.log("Usuarios creados:", adminUser.name, managerCentro.name, cashierPlaza.name, managerCrystal.name, cashierCrystal.name, cashierCentro2.name);
-
-  // Productos con variantes (algunas incompletas) y precios variables
-  const products = [
-    {
-      name: "Dunk Low",
-      brand: "Nike",
-      description: "Edición especial Retro",
-      variants: [
-        { sku: "NIKE-DUNK-BLU-24", size: "24", color: "Azul/Blanco", price: 2499.0 },
-        { sku: "NIKE-DUNK-BLU-25", size: "25", color: "Azul/Blanco", price: 2499.0 },
-        { sku: "NIKE-DUNK-BLU-26", size: "26", color: "Azul/Blanco", price: 2499.0 },
-        { sku: "NIKE-DUNK-BLU-27", size: "27", color: "Azul/Blanco", price: 2499.0 },
-        { sku: "NIKE-DUNK-BLU-28", size: "28", color: "Azul/Blanco", price: 2499.0 },
-      ],
-      inventoryDistribution: "all", // disponible en todas las sucursales
-    },
-    {
-      name: "Stan Smith",
-      brand: "Adidas",
-      description: "Clásico atemporal",
-      variants: [
-        { sku: "ADIDAS-STAN-WHT-24", size: "24", color: "Blanco/Verde", price: 2199.0 },
-        { sku: "ADIDAS-STAN-WHT-25", size: "25", color: "Blanco/Verde", price: 2199.0 },
-        { sku: "ADIDAS-STAN-WHT-26", size: "26", color: "Blanco/Verde", price: 2199.0 },
-        { sku: "ADIDAS-STAN-WHT-27", size: "27", color: "Blanco/Verde", price: 2199.0 },
-        { sku: "ADIDAS-STAN-WHT-28", size: "28", color: "Blanco/Verde", price: 2199.0 },
-      ],
-      inventoryDistribution: "all",
-    },
-    {
-      name: "574",
-      brand: "New Balance",
-      description: "Estilo retro clásico",
-      variants: [
-        { sku: "NB-574-GRY-24", size: "24", color: "Gris/Naranja", price: 2299.0 },
-        { sku: "NB-574-GRY-25", size: "25", color: "Gris/Naranja", price: 2299.0 },
-        { sku: "NB-574-GRY-26", size: "26", color: "Gris/Naranja", price: 2299.0 },
-        { sku: "NB-574-GRY-27", size: "27", color: "Gris/Naranja", price: 2299.0 },
-        { sku: "NB-574-GRY-28", size: "28", color: "Gris/Naranja", price: 2299.0 },
-      ],
-      inventoryDistribution: "all",
-    },
-    {
-      name: "RS-X",
-      brand: "Puma",
-      description: "Diseño futurista chunky",
-      variants: [
-        { sku: "PUMA-RSX-BLK-24", size: "24", color: "Negro/Plateado", price: 2399.0 },
-        { sku: "PUMA-RSX-BLK-25", size: "25", color: "Negro/Plateado", price: 2399.0 },
-        { sku: "PUMA-RSX-BLK-26", size: "26", color: "Negro/Plateado", price: 2399.0 },
-        { sku: "PUMA-RSX-BLK-27", size: "27", color: "Negro/Plateado", price: 2399.0 },
-        { sku: "PUMA-RSX-BLK-28", size: "28", color: "Negro/Plateado", price: 2399.0 },
-      ],
-      inventoryDistribution: "all",
-    },
-    // Nuevos productos con tallas faltantes y precios distintos
-    {
-      name: "Air Force 1",
-      brand: "Nike",
-      description: "Clásico blanco",
-      variants: [
-        { sku: "NIKE-AF1-WHT-24", size: "24", color: "Blanco/Blanco", price: 2899.0 },
-        { sku: "NIKE-AF1-WHT-25", size: "25", color: "Blanco/Blanco", price: 2899.0 },
-        { sku: "NIKE-AF1-WHT-26", size: "26", color: "Blanco/Blanco", price: 2899.0 },
-        // faltan tallas 27 y 28
-      ],
-      inventoryDistribution: "centro_and_plaza", // solo en Centro y Plaza Américas
-    },
-    {
-      name: "Jordan 1 Mid",
-      brand: "Jordan",
-      description: "Estilo urbano",
-      variants: [
-        { sku: "JORDAN-MID-BLK-25", size: "25", color: "Negro/Rojo", price: 3299.0 },
-        { sku: "JORDAN-MID-BLK-26", size: "26", color: "Negro/Rojo", price: 3299.0 },
-        { sku: "JORDAN-MID-BLK-27", size: "27", color: "Negro/Rojo", price: 3299.0 },
-        { sku: "JORDAN-MID-BLK-28", size: "28", color: "Negro/Rojo", price: 3299.0 },
-        // falta talla 24
-      ],
-      inventoryDistribution: "crystal_only", // solo en Plaza Crystal
-    },
-    {
-      name: "Old Skool",
-      brand: "Vans",
-      description: "Skate clásico",
-      variants: [
-        { sku: "VANS-OLD-BLK-24", size: "24", color: "Negro/Blanco", price: 1499.0 },
-        { sku: "VANS-OLD-BLK-25", size: "25", color: "Negro/Blanco", price: 1499.0 },
-        { sku: "VANS-OLD-BLK-26", size: "26", color: "Negro/Blanco", price: 1499.0 },
-        { sku: "VANS-OLD-BLK-27", size: "27", color: "Negro/Blanco", price: 1499.0 },
-        // falta talla 28
-      ],
-      inventoryDistribution: "all_except_crystal", // todas menos Plaza Crystal
-    },
-  ];
-
-  // Helper para asignar inventario según la distribución
-  function getStoresForDistribution(
-    dist: string,
-    centroId: string,
-    plazaId: string,
-    crystalId: string
-  ): { storeId: string; quantity: number }[] {
-    const stores: { storeId: string; quantity: number }[] = [];
-    const randomQty = () => Math.floor(Math.random() * 20) + 5; // 5-24
-
-    if (dist === "all") {
-      stores.push(
-        { storeId: centroId, quantity: randomQty() },
-        { storeId: plazaId, quantity: randomQty() },
-        { storeId: crystalId, quantity: randomQty() }
-      );
-    } else if (dist === "centro_and_plaza") {
-      stores.push(
-        { storeId: centroId, quantity: randomQty() },
-        { storeId: plazaId, quantity: randomQty() }
-      );
-    } else if (dist === "crystal_only") {
-      stores.push({ storeId: crystalId, quantity: randomQty() });
-    } else if (dist === "all_except_crystal") {
-      stores.push(
-        { storeId: centroId, quantity: randomQty() },
-        { storeId: plazaId, quantity: randomQty() }
-      );
+    if (!hasTodaySale && createdAt.toISOString().split('T')[0] === todayStr) {
+      hasTodaySale = true;
     }
-    return stores;
-  }
 
-  for (const productData of products) {
-    let product = await prisma.product.findFirst({
-      where: { name: productData.name, brand: productData.brand },
+    const availableVariants = variants.filter((v) => {
+      const inv = v.inventory.find((i) => i.storeId === store.id);
+      return inv && inv.quantity > 0;
     });
 
-    if (!product) {
-      product = await prisma.product.create({
+    if (availableVariants.length === 0) continue;
+
+    const itemsCount = randomInt(1, 2);
+    const selected = new Set<string>();
+    const itemsData: {
+      variantId: string;
+      quantity: number;
+      price: number;
+      salePrice: number;
+    }[] = [];
+    let saleTotal = 0;
+
+    for (let j = 0; j < itemsCount; j++) {
+      let candidate;
+      do {
+        candidate = availableVariants[Math.floor(Math.random() * availableVariants.length)];
+      } while (selected.has(candidate.id) && selected.size < availableVariants.length);
+      selected.add(candidate.id);
+
+      const quantity = 1;
+      const price = Number(candidate.price);
+      const discount = Math.random() < 0.2 ? randomInt(5, 15) / 100 : 0;
+      const salePrice = Number((price * (1 - discount)).toFixed(2));
+      const itemTotal = quantity * salePrice;
+      saleTotal += itemTotal;
+
+      const inventory = candidate.inventory.find((inv) => inv.storeId === store.id);
+      if (!inventory || inventory.quantity < quantity) continue;
+
+      itemsData.push({
+        variantId: candidate.id,
+        quantity,
+        price,
+        salePrice,
+      });
+    }
+
+    if (itemsData.length === 0) continue;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.sale.create({
         data: {
-          name: productData.name,
-          brand: productData.brand,
-          description: productData.description,
-          variants: {
-            create: productData.variants.map((variant) => {
-              const storeList = getStoresForDistribution(
-                productData.inventoryDistribution,
-                centroStore.id,
-                plazaAmericasStore.id,
-                plazaCrystalStore.id
-              );
-              return {
-                sku: variant.sku,
-                size: variant.size,
-                color: variant.color,
-                price: variant.price,
-                inventory: {
-                  create: storeList.map((s) => ({
-                    storeId: s.storeId,
-                    quantity: s.quantity,
-                  })),
-                },
-              };
-            }),
-          },
+          storeId: store.id,
+          total: saleTotal,
+          createdAt,
+          items: { create: itemsData },
         },
       });
-      console.log(`Producto creado: ${product.name} (${product.brand})`);
-    } else {
-      console.log(`Producto ya existente: ${product.name} (${product.brand})`);
+
+      for (const item of itemsData) {
+        await tx.inventory.updateMany({
+          where: {
+            storeId: store.id,
+            variantId: item.variantId,
+            quantity: { gte: item.quantity },
+          },
+          data: { quantity: { decrement: item.quantity } },
+        });
+      }
+    });
+
+    salesCreated++;
+    if (salesCreated % 10 === 0) {
+      variants = await prisma.variant.findMany({ include: { inventory: true } });
     }
   }
 
-  // Cliente demo
-  const demoCustomer = await prisma.customer.upsert({
-    where: { email: "cliente@bentenison.mx" },
+  // Si no hay venta hoy, forzar una
+  if (!hasTodaySale) {
+    console.log("⚠️ No se generó venta hoy. Creando una forzada...");
+    // Buscar una tienda con stock
+    let storeWithStock = null;
+    for (const store of stores) {
+      const hasStock = variants.some(v => v.inventory.some(i => i.storeId === store.id && i.quantity > 0));
+      if (hasStock) {
+        storeWithStock = store;
+        break;
+      }
+    }
+    if (storeWithStock) {
+      const variant = variants.find(v => v.inventory.some(i => i.storeId === storeWithStock!.id && i.quantity > 0));
+      if (variant) {
+        const quantity = 1;
+        const price = Number(variant.price);
+        const salePrice = price;
+        await prisma.$transaction(async (tx) => {
+          await tx.sale.create({
+            data: {
+              storeId: storeWithStock!.id,
+              total: price,
+              createdAt: now,
+              items: {
+                create: {
+                  variantId: variant.id,
+                  quantity,
+                  price,
+                  salePrice,
+                },
+              },
+            },
+          });
+          await tx.inventory.updateMany({
+            where: {
+              storeId: storeWithStock!.id,
+              variantId: variant.id,
+              quantity: { gte: quantity },
+            },
+            data: { quantity: { decrement: quantity } },
+          });
+        });
+        salesCreated++;
+        console.log("✅ Venta forzada creada para hoy.");
+      }
+    }
+  }
+
+  console.log(`✅ Ventas generadas: ${salesCreated} (de ${totalTarget} intentos)`);
+}
+
+// --------------------------------------------------------------
+// LIMPIEZA PROFUNDA
+// --------------------------------------------------------------
+async function cleanDatabase() {
+  console.log("🧹 Limpiando datos existentes...");
+  await prisma.saleItem.deleteMany();
+  await prisma.sale.deleteMany();
+  await prisma.inventory.deleteMany();
+  await prisma.variant.deleteMany();
+  await prisma.product.deleteMany();
+  // No se borran categorías, usuarios ni tiendas
+}
+
+// --------------------------------------------------------------
+// MAIN
+// --------------------------------------------------------------
+async function main() {
+  console.log("🌱 Iniciando seed...");
+
+  const plainPasswordStaff = process.env.SEED_PASSWORD || "XZNRXNJTESGAQA";
+  const staffPass = await hashPassword(plainPasswordStaff);
+
+  await cleanDatabase();
+
+  const calzadoCat = await prisma.category.upsert({
+    where: { slug: "calzado" },
     update: {},
+    create: { name: "Calzado", slug: "calzado" },
+  });
+
+  const storesData = [
+    { name: "Centro Xalapa", location: "Enriquez #10, Centro Histórico" },
+    { name: "Plaza Américas", location: "Carr. Xalapa-Veracruz Km 2" },
+    { name: "Plaza Crystal", location: "Av. Lázaro Cárdenas, Col. Crystal" },
+    { name: "Plaza Museo", location: "Av. 20 de Noviembre, Zona Centro" },
+    { name: "Plaza Ánimas", location: "Blvd. Ánimas, Col. Ánimas" },
+  ];
+
+  const stores: Store[] = [];
+  for (const s of storesData) {
+    const store = await prisma.store.upsert({
+      where: { name: s.name },
+      update: {},
+      create: s,
+    });
+    stores.push(store);
+  }
+
+  // Admin
+  await prisma.user.upsert({
+    where: { email: "admin@bentenison.mx" },
+    update: { password: staffPass },
     create: {
-      email: "cliente@bentenison.mx",
-      password: await hashPassword("cliente123"),
-      name: "Cliente Demo",
-      phone: "555-1234",
-      address: "Av. Principal 123",
-      city: "Xalapa",
-      postalCode: "91000",
+      name: "Administrador Global",
+      email: "admin@bentenison.mx",
+      password: staffPass,
+      role: Role.ADMIN,
+      storeId: null,
     },
   });
-  console.log("Cliente demo creado:", demoCustomer.email);
 
-  console.log("Seed completado con éxito 👟");
+  // Gerentes
+  for (const store of stores) {
+    const managerEmail = `gerente.${store.name.toLowerCase().replace(/\s/g, "")}@bentenison.mx`;
+    await prisma.user.upsert({
+      where: { email: managerEmail },
+      update: { password: staffPass },
+      create: {
+        name: `Gerente ${store.name}`,
+        email: managerEmail,
+        password: staffPass,
+        role: Role.MANAGER,
+        storeId: store.id,
+      },
+    });
+  }
+
+  // Cajeros
+  for (const store of stores) {
+    const num = randomInt(1, 3);
+    for (let i = 1; i <= num; i++) {
+      const cashierEmail = `cajero${i}.${store.name.toLowerCase().replace(/\s/g, "")}@bentenison.mx`;
+      await prisma.user.upsert({
+        where: { email: cashierEmail },
+        update: { password: staffPass },
+        create: {
+          name: `Cajero ${i} - ${store.name}`,
+          email: cashierEmail,
+          password: staffPass,
+          role: Role.CASHIER,
+          storeId: store.id,
+        },
+      });
+    }
+  }
+
+  // Productos y variantes
+  const productsData = [
+    { name: "Dunk Low", brand: "Nike", basePrice: 2499, skuPrefix: "NIKE-DUNK" },
+    { name: "Stan Smith", brand: "Adidas", basePrice: 2199, skuPrefix: "AD-STAN" },
+    { name: "Jordan 1 Mid", brand: "Jordan", basePrice: 3299, skuPrefix: "JO-MID" },
+    { name: "RS-X", brand: "Puma", basePrice: 1899, skuPrefix: "PUMA-RSX" },
+    { name: "574", brand: "New Balance", basePrice: 1799, skuPrefix: "NB-574" },
+    { name: "Chuck Taylor", brand: "Converse", basePrice: 1299, skuPrefix: "CONV-CHUCK" },
+  ];
+
+  const sizes = ["25", "26", "27", "28", "29", "30", "31"];
+
+  for (const p of productsData) {
+    await prisma.product.create({
+      data: {
+        name: p.name,
+        brand: p.brand,
+        categoryId: calzadoCat.id,
+        variants: {
+          create: sizes.map((size) => ({
+            sku: `${p.skuPrefix}-${size}`,
+            size,
+            color: "Original",
+            price: p.basePrice,
+            inventory: {
+              create: stores.map((store) => ({
+                storeId: store.id,
+                quantity: randomInt(15, 30),
+              })),
+            },
+          })),
+        },
+      },
+    });
+  }
+
+  const ventasObjetivo = randomInt(45, 55);
+  await generateFakeSales(ventasObjetivo);
+
+  console.log("✅ Seed completado exitosamente.");
+  console.log(`🔑 Contraseña utilizada para todos los usuarios internos: ${plainPasswordStaff}`);
+  console.log("   Admin:      admin@bentenison.mx");
+  console.log("   Gerentes:   gerente.<sucursal>@bentenison.mx");
+  console.log("   Cajeros:    cajero<1-3>.<sucursal>@bentenison.mx");
 }
 
 main()
   .then(async () => await prisma.$disconnect())
   .catch(async (e) => {
-    console.error(e);
+    console.error("❌ Error en seed:", e);
     await prisma.$disconnect();
     process.exit(1);
   });
