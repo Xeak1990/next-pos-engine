@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Product } from "../../types";
 import ProductCard from "../../components/shop/ProductCard";
@@ -17,23 +17,7 @@ interface CatalogClientProps {
   };
 }
 
-// ============================================================
-// AJUSTES DE ESTILOS (cambia los px a tu gusto)
-// ============================================================
-const SEARCH_INPUT_WIDTH_PX = 1560;
-const SEARCH_INPUT_HEIGHT_PX = 42;
-const SEARCH_INPUT_BORDER_RADIUS = 10;
 const PROFILE_ICON_SIZE_PX = 26;
-const DEBOUNCE_DELAY_MS = 300; // retraso para la búsqueda en tiempo real
-// ============================================================
-
-function normalizeString(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
 
 const priceRanges = [
   { label: "Todos", min: 0, max: Infinity },
@@ -51,8 +35,6 @@ export default function CatalogClient({
 }: CatalogClientProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const initialSearchQuery = searchParams.get("search") || "";
   const { clearCart } = useCartWeb();
   const [filters, setFilters] = useState({
     store: "",
@@ -61,38 +43,16 @@ export default function CatalogClient({
     priceRangeIndex: 0,
   });
 
-  const [searchInput, setSearchInput] = useState(initialSearchQuery);
   const [customer, setCustomer] = useState<{ name: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Debounce: actualiza la URL después de que el usuario deje de escribir
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (searchInput.trim()) {
-        params.set("search", searchInput.trim());
-      } else {
-        params.delete("search");
-      }
-      router.replace(`${pathname}?${params.toString()}`);
-    }, DEBOUNCE_DELAY_MS);
-    return () => clearTimeout(timeoutId);
-  }, [searchInput, pathname, router, searchParams]);
-
-  // Sincronizar el input si la URL cambia por otros medios
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSearchInput(initialSearchQuery);
-  }, [initialSearchQuery]);
-
-  // Obtener usuario autenticado (cliente) – CON credentials: "include"
   useEffect(() => {
     let isMounted = true;
     const fetchCustomer = async () => {
       try {
         const res = await fetch("/api/auth/customer/me", {
           cache: "no-store",
-          credentials: "include", // ← AÑADIDO
+          credentials: "include",
         });
         if (res.ok && isMounted) {
           const data = await res.json();
@@ -117,34 +77,18 @@ export default function CatalogClient({
     router.push("/");
   };
 
-  // Filtrado de productos
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(initialProducts)) return [];
     const priceRange = priceRanges[filters.priceRangeIndex];
-    const searchTerm = initialSearchQuery;
     return initialProducts.filter((product) => {
       if (!product) return false;
       if (filters.category && product.category !== filters.category) return false;
-      let matchesSearch = true;
-      if (searchTerm) {
-        const normalizedSearch = normalizeString(searchTerm);
-        const productName = normalizeString(product.name || "");
-        const productBrand = normalizeString(product.brand || "");
-        const productCategory = normalizeString(product.category || "");
-        const productColors = product.variants
-          .map((v) => normalizeString(v.color || ""))
-          .join(" ");
-        matchesSearch =
-          productName.includes(normalizedSearch) ||
-          productBrand.includes(normalizedSearch) ||
-          productCategory.includes(normalizedSearch) ||
-          productColors.includes(normalizedSearch);
-      }
+
       const hasMatchingVariant = product.variants.some((variant) => {
         if (filters.size && variant.size !== filters.size) return false;
         if (filters.store) {
           const hasStore = variant.inventory.some(
-            (inv) => inv.store.name === filters.store,
+            (inv) => inv.store.name === filters.store
           );
           if (!hasStore) return false;
         }
@@ -153,9 +97,9 @@ export default function CatalogClient({
           return false;
         return true;
       });
-      return matchesSearch && hasMatchingVariant;
+      return hasMatchingVariant;
     });
-  }, [initialProducts, filters, initialSearchQuery]);
+  }, [initialProducts, filters]);
 
   const handleClearFilters = () => {
     setFilters({
@@ -164,7 +108,6 @@ export default function CatalogClient({
       size: "",
       priceRangeIndex: 0,
     });
-    setSearchInput("");
   };
 
   const currentDate = new Date();
@@ -178,9 +121,10 @@ export default function CatalogClient({
     .toLowerCase();
 
   return (
-    <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible">
-      {/* Cabecera con título, fecha e iconos */}
-      <div className="flex w-full items-start justify-between mb-[15px]">
+    // Contenedor principal: ocupa al menos toda la pantalla, scroll del navegador
+    <div className="min-h-screen w-full flex flex-col px-6 py-8 text-white">
+      {/* Cabecera fija */}
+      <div className="flex w-full items-start justify-between mb-[15px] shrink-0">
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
             <Link href="/dashboard" className="hover:text-white transition-colors duration-200">
@@ -206,7 +150,6 @@ export default function CatalogClient({
           </p>
         </div>
 
-        {/* Iconos de usuario y carrito */}
         <div className="flex items-center gap-4">
           <div className="relative">
             <button
@@ -285,18 +228,29 @@ export default function CatalogClient({
         </div>
       </div>
 
-      {/* Contenedor principal con scroll horizontal */}
-      <div className="flex flex-row gap-[15px] items-start overflow-x-auto">
+      {/* Fila principal: items-start para que el filtro no se estire */}
+      <div className="flex-1 flex flex-row gap-[15px] items-start">
+        {/* Panel de filtros: altura fija de 500px, no se estira */}
         <aside className="w-[200px] shrink-0">
-          <article className="bt-panel !rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-3 h-[500px]">
+          <article className="bt-panel !rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-3 h-[500px] overflow-y-auto">
             <div className="w-[80%] mx-auto pt-[10px] pb-[25px] flex flex-col h-full">
-              <h2 className="text-[15px] font-[900] uppercase text-white tracking-tight mb-[25px]" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
+              <h2
+                className="text-[15px] font-[900] uppercase text-white tracking-tight mb-[25px]"
+                style={{
+                  fontFamily: "Arial, sans-serif",
+                  transform: "scale(0.9, 1.1)",
+                  transformOrigin: "left center",
+                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
+                }}
+              >
                 Filtros
               </h2>
 
               {/* Sucursal */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Sucursal</label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
+                  Sucursal
+                </label>
                 <select
                   value={filters.store}
                   onChange={(e) => setFilters({ ...filters, store: e.target.value })}
@@ -305,14 +259,18 @@ export default function CatalogClient({
                 >
                   <option value="">Todas</option>
                   {filterOptions.stores.map((store) => (
-                    <option key={store} value={store}>{store}</option>
+                    <option key={store} value={store}>
+                      {store}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Categoría */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Categoría</label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
+                  Categoría
+                </label>
                 <select
                   value={filters.category}
                   onChange={(e) => setFilters({ ...filters, category: e.target.value })}
@@ -321,19 +279,25 @@ export default function CatalogClient({
                 >
                   <option value="">Todas</option>
                   {filterOptions.categories.map((cat, idx) => (
-                    <option key={`cat-${idx}`} value={cat}>{cat}</option>
+                    <option key={`cat-${idx}`} value={cat}>
+                      {cat}
+                    </option>
                   ))}
                 </select>
               </div>
 
               {/* Talla */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Talla</label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
+                  Talla
+                </label>
                 <div className="flex flex-wrap gap-[5px]" style={{ marginBottom: "25px" }}>
                   {filterOptions.sizes.map((size) => (
                     <button
                       key={size}
-                      onClick={() => setFilters({ ...filters, size: filters.size === size ? "" : size })}
+                      onClick={() =>
+                        setFilters({ ...filters, size: filters.size === size ? "" : size })
+                      }
                       className={`px-3 py-1.5 text-xs font-semibold rounded-[14px] transition-all ${
                         filters.size === size
                           ? "bg-[#E8621A] text-white border border-[#E8621A]"
@@ -349,7 +313,9 @@ export default function CatalogClient({
 
               {/* Precio */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Precio</label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
+                  Precio
+                </label>
                 <select
                   value={filters.priceRangeIndex}
                   onChange={(e) => setFilters({ ...filters, priceRangeIndex: Number(e.target.value) })}
@@ -357,16 +323,24 @@ export default function CatalogClient({
                   style={{ height: "40px", paddingLeft: "8px", paddingRight: "8px", marginBottom: "25px" }}
                 >
                   {priceRanges.map((range, idx) => (
-                    <option key={idx} value={idx}>{range.label}</option>
+                    <option key={idx} value={idx}>
+                      {range.label}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Botón limpiar */}
+              {/* Botón limpiar: sigue anclado al fondo del panel de 500px */}
               <button
                 onClick={handleClearFilters}
                 className="bt-button-ghost w-full font-[900] justify-center rounded-[8px] mt-auto text-[10px]"
-                style={{ height: "24px", fontFamily: "Arial, sans-serif", fontWeight: 900, padding: "0 0.5rem", letterSpacing: "0.1em" }}
+                style={{
+                  height: "24px",
+                  fontFamily: "Arial, sans-serif",
+                  fontWeight: 900,
+                  padding: "0 0.5rem",
+                  letterSpacing: "0.1em",
+                }}
               >
                 Limpiar filtros
               </button>
@@ -374,49 +348,14 @@ export default function CatalogClient({
           </article>
         </aside>
 
-        {/* Área de productos y buscador */}
-        <div className="flex-1 min-w-0">
-          <div className="mb-[10px]">
-            <div className="relative" style={{ maxWidth: "100%", width: SEARCH_INPUT_WIDTH_PX }}>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Buscar productos..."
-                className="w-full rounded-full border border-[#333333] bg-[#111111] text-white placeholder:text-[#6B7280] focus:border-[#E8621A] focus:outline-none"
-                style={{
-                  height: `${SEARCH_INPUT_HEIGHT_PX}px`,
-                  paddingLeft: `${SEARCH_INPUT_HEIGHT_PX}px`,
-                  paddingRight: "16px",
-                  fontSize: "0.9rem",
-                  borderRadius: `${SEARCH_INPUT_BORDER_RADIUS}px`,
-                  fontFamily: "Arial, sans-serif",
-                }}
-              />
-              <svg
-                width="20"
-                height="20"
-                className="absolute top-1/2 -translate-y-1/2 text-[#6B7280]"
-                style={{ left: "12px" }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-[15px] mb-[10px]">
+        {/* Área de productos: ocupa el resto del ancho, altura determinada por su contenido */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="grid grid-cols-4 gap-[15px] auto-rows-min">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
+
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-[#9CA3AF] font-sans text-sm">
               No hay productos con los filtros seleccionados.

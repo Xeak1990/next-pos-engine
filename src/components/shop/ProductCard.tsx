@@ -10,8 +10,13 @@ interface ProductCardProps {
   product: Product;
 }
 
-const BUTTON_WIDTH_PX = 90;
-const BUTTON_HEIGHT_PX = 34;
+// ============================================================
+// CONFIGURACIÓN DE TAMAÑOS (cambia los px a tu gusto)
+// ============================================================
+const CARD_MAX_WIDTH_PX = 350;       // ancho máximo de la tarjeta (se adaptará)
+const BUTTON_WIDTH_PX = 70;          // ancho de los botones
+const BUTTON_HEIGHT_PX = 34;         // altura de los botones
+// ============================================================
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCartWeb();
@@ -46,7 +51,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const result = addItem({
       productId: product.id,
-      variantId: variant.id,          // ← agregado
+      variantId: variant.id,
       name: `${product.name} ${product.brand ? `(${product.brand})` : ""}`,
       price: Number(variant.price),
       quantity: 1,
@@ -65,8 +70,10 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-      <article className="bt-panel rounded-[24px] flex flex-col h-[350px] transition-all duration-200 hover:border-[#E8621A] overflow-hidden">
-        {/* MITAD SUPERIOR */}
+      <article
+        className="bt-panel rounded-[24px] flex flex-col h-[350px] transition-all duration-200 hover:border-[#E8621A] overflow-hidden"
+        style={{ maxWidth: `${CARD_MAX_WIDTH_PX}px`, width: "100%", margin: 0 }}
+      >
         <div className="flex-1 bg-[#242424] relative">
           <div className="w-[88%] mx-auto h-full relative">
             <div className="absolute top-[15px] left-[0px]">
@@ -94,7 +101,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         </div>
 
-        {/* MITAD INFERIOR */}
         <div
           className="bg-[#111111] flex flex-col flex-shrink-0 py-4"
           style={{ paddingLeft: "24px", paddingRight: "24px", boxSizing: "border-box" }}

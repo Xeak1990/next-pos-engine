@@ -326,12 +326,6 @@ const navigationSections: NavSection[] = [
     title: "Operaciones",
     items: [
       {
-        name: "Productos",
-        href: "/products",
-        icon: ProductsIcon,
-        roles: ["ADMIN", "MANAGER"],
-      },
-      {
         name: "Inventario",
         href: "/inventory",
         icon: InventoryIcon,

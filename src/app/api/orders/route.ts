@@ -67,9 +67,6 @@ export async function POST(request: NextRequest) {
     });
 
     // 2. Reducir stock en la tienda correspondiente
-    // Para pickup: la tienda de recogida puede ser diferente a la tienda del stock.
-    // En nuestro modelo, el carrito ya tiene una tienda común (storeId) que es de donde se toman los productos.
-    // Usamos esa tienda para reducir stock.
     if (storeId) {
       for (const item of items) {
         const inventory = await prisma.inventory.findFirst({
@@ -90,6 +87,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 3. Crear un registro en Sale para que los reportes y dashboard lo capturen
+    if (storeId) {
+      await prisma.sale.create({
+        data: {
+          storeId: storeId,
+          total: total,
+          items: {
+            create: items.map((item) => ({
+              variantId: item.variantId,
+              quantity: item.quantity,
+              price: item.price,
+              salePrice: item.price, // sin descuento por ahora
+            })),
+          },
+        },
+      });
+    }
+
     return NextResponse.json({ orderId: order.id }, { status: 201 });
   } catch (error) {
     console.error("Error creando orden:", error);
@@ -97,4 +112,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET para listar órdenes (admin/manager) se mantiene igual
+export async function GET(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("bt_auth")?.value;
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const payload = await verifyAuthToken(token);
+    if (!payload || (payload.role !== "ADMIN" && payload.role !== "MANAGER")) {
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
+    }
+    const orders = await prisma.order.findMany({
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error("Error en GET /api/orders:", error);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
+}

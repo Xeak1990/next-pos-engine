@@ -27,24 +27,23 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/orders");
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(data);
-      } else {
-        console.error("Error fetching orders");
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/orders", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setOrders(data);
+        } else {
+          console.error("Error fetching orders");
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchOrders();
   }, []);
 
@@ -56,7 +55,12 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        fetchOrders(); // refrescar
+        // refrescar la lista
+        setOrders((prev) =>
+          prev.map((order) =>
+            order.id === id ? { ...order, status: newStatus } : order
+          )
+        );
       } else {
         alert("Error al actualizar el estado");
       }

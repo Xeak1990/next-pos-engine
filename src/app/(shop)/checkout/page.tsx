@@ -31,8 +31,8 @@ const IVA_RATE = 0.16;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const cart = useCartWeb();  // 👈 obtener todo el objeto
-  const { items, totalPrice, clearCart, storeId } = cart; // 👈 desestructurar después
+  const cart = useCartWeb();
+  const { items, totalPrice, clearCart, storeId } = cart;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
@@ -170,7 +170,6 @@ export default function CheckoutPage() {
       paymentMethod: formData.paymentMethod,
     };
 
-    // ✅ Asegurar que items existe y es un array
     if (!items || !Array.isArray(items)) {
       alert("No hay productos en el carrito");
       setIsSubmitting(false);
@@ -273,12 +272,11 @@ export default function CheckoutPage() {
           </Link>
         </div>
 
-        {/* Contenido principal */}
         <div className="flex flex-row gap-[15px] items-start overflow-y-visible">
-          {/* Formulario */}
           <div className="flex-1 min-w-0">
             <div className="bt-panel rounded-[24px] shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-5">
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Campos del formulario (sin cambios) */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
@@ -413,7 +411,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Resumen */}
           <aside className="w-[320px] shrink-0">
             <div className="bt-panel rounded-[24px] shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-5">
               <h2 className="text-xl font-bold text-white mb-4 font-sans">Resumen</h2>
@@ -456,7 +453,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Modal de éxito */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="mx-4 max-w-md rounded-2xl bg-[#1A1A1A] p-6 text-center shadow-xl border border-[#333]">

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { cookies } from "next/headers";
+import { verifyAuthToken } from "../../../../lib/token-utils";
 
 function parseDateQuery(value: string | null, fallback: Date) {
   const date = value ? new Date(value) : fallback;
@@ -12,148 +14,118 @@ function formatISODate(date: Date) {
 
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url);
-    const startDateQuery = url.searchParams.get("startDate");
-    const endDateQuery = url.searchParams.get("endDate");
-
-    let startDate = parseDateQuery(startDateQuery, new Date());
-    let endDate = parseDateQuery(endDateQuery, new Date());
-
-    startDate = new Date(startDate.setHours(0, 0, 0, 0));
-    endDate = new Date(endDate.setHours(23, 59, 59, 999));
-
-    if (startDate > endDate) {
-      const temp = startDate;
-      startDate = endDate;
-      endDate = temp;
+    // 1. Autenticación
+    const cookieStore = await cookies();
+    const token = cookieStore.get("bt_auth")?.value;
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const payload = await verifyAuthToken(token);
+    if (!payload || (payload.role !== "ADMIN" && payload.role !== "MANAGER")) {
+      return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
     }
 
-    const dateFilter = {
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
+    // 2. Parámetros de fecha
+    const url = new URL(request.url);
+    let startDate = parseDateQuery(url.searchParams.get("startDate"), new Date());
+    let endDate = parseDateQuery(url.searchParams.get("endDate"), new Date());
 
-    const totalSalesResult = await prisma.sale.aggregate({
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (startDate > endDate) [startDate, endDate] = [endDate, startDate];
+
+    const dateFilter = { createdAt: { gte: startDate, lte: endDate } };
+
+    // 3. Totales
+    const totalAgg = await prisma.sale.aggregate({
       where: dateFilter,
       _sum: { total: true },
       _count: true,
     });
-
-    const totalSales = totalSalesResult._sum.total ? Number(totalSalesResult._sum.total) : 0;
-    const totalTransactions = totalSalesResult._count;
+    const totalSales = Number(totalAgg._sum.total || 0);
+    const totalTransactions = totalAgg._count;
     const averageTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
-    const salesByStore = await prisma.sale.groupBy({
+    // 4. Ventas por sucursal
+    const salesByStoreRaw = await prisma.sale.groupBy({
       by: ["storeId"],
       where: dateFilter,
       _sum: { total: true },
       _count: true,
     });
-
-    const storeIds = salesByStore.map((s) => s.storeId);
+    const storeIds = salesByStoreRaw.map(s => s.storeId);
     const stores = await prisma.store.findMany({
       where: { id: { in: storeIds } },
       select: { id: true, name: true },
     });
-
-    const storeMap = stores.reduce((acc, store) => {
-      acc[store.id] = store.name;
-      return acc;
-    }, {} as Record<string, string>);
-
-    const salesByStoreFormatted = salesByStore.map((s) => ({
-      store: storeMap[s.storeId] || 'Desconocido',
-      sales: s._sum.total ? Number(s._sum.total) : 0,
+    const storeMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
+    const salesByStore = salesByStoreRaw.map(s => ({
+      store: storeMap[s.storeId] || "Desconocido",
+      sales: Number(s._sum.total || 0),
       transactions: s._count,
     }));
 
+    // 5. Top productos más vendidos
     const saleItems = await prisma.saleItem.findMany({
-      where: {
-        sale: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      },
+      where: { sale: dateFilter },
       select: {
         quantity: true,
         salePrice: true,
         variant: {
           select: {
-            id: true,
             size: true,
-            product: {
-              select: {
-                name: true,
-              },
-            },
+            product: { select: { name: true } },
           },
         },
       },
     });
 
-    const topSellerMap = new Map<string, { modelName: string; size: string; quantity: number; total: number }>();
-
-    saleItems.forEach((item) => {
-      const key = item.variant.id;
-      const quantity = item.quantity;
-      const total = Number(item.salePrice) * quantity;
-      const modelName = item.variant.product.name;
-      const size = item.variant.size;
-      const existing = topSellerMap.get(key);
-
+    const topMap = new Map<string, { modelName: string; size: string; quantity: number; total: number }>();
+    for (const item of saleItems) {
+      const key = `${item.variant.product.name}-${item.variant.size}`;
+      const qty = item.quantity;
+      const total = Number(item.salePrice) * qty;
+      const existing = topMap.get(key);
       if (existing) {
-        existing.quantity += quantity;
+        existing.quantity += qty;
         existing.total += total;
       } else {
-        topSellerMap.set(key, {
-          modelName,
-          size,
-          quantity,
+        topMap.set(key, {
+          modelName: item.variant.product.name,
+          size: item.variant.size,
+          quantity: qty,
           total,
         });
       }
-    });
-
-    const topSellers = Array.from(topSellerMap.values())
+    }
+    const topSellers = Array.from(topMap.values())
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    const trendRows = await prisma.$queryRaw`
-      SELECT date_trunc('day', "createdAt") AS day, SUM("total") AS total
-      FROM "Sale"
-      WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-      GROUP BY day
-      ORDER BY day
-    `;
-
-    const trendMap = new Map<string, number>(
-      (trendRows as Array<{ day: Date; total: string | number }>).map((row) => [
-        formatISODate(new Date(row.day)),
-        Number(row.total),
-      ])
-    );
-
-    const salesTrend: Array<{ date: string; total: number }> = [];
-    const currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-      const key = formatISODate(currentDate);
-      salesTrend.push({
-        date: key,
-        total: trendMap.get(key) ?? 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
+    // 6. Tendencia diaria
+    const allSales = await prisma.sale.findMany({
+      where: dateFilter,
+      select: { total: true, createdAt: true },
+    });
+    const trendMap = new Map<string, number>();
+    for (const sale of allSales) {
+      const dateKey = formatISODate(sale.createdAt);
+      trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + Number(sale.total));
+    }
+    const salesTrend = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const key = formatISODate(current);
+      salesTrend.push({ date: key, total: trendMap.get(key) || 0 });
+      current.setDate(current.getDate() + 1);
     }
 
     return NextResponse.json({
       totalSales,
       totalTransactions,
       averageTicket,
-      salesByStore: salesByStoreFormatted,
+      salesByStore,
       topSellers,
       salesTrend,
       range: {
@@ -163,6 +135,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error en API de reportes de ventas:", error);
-    return NextResponse.json({ error: "Error al cargar reportes" }, { status: 500 });
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
