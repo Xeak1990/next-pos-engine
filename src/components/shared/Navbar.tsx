@@ -11,6 +11,7 @@ type UserData = {
   name: string;
   email: string;
   role: UserRole;
+  storeId?: string | null;
 };
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactElement;
@@ -371,11 +372,16 @@ function getRoleLabel(role: UserRole) {
 }
 
 interface NavbarProps {
-  user: UserData;
+  user: UserData | null;
 }
 
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
+
+  // Si no hay usuario (no autenticado), no renderizamos nada
+  if (!user) {
+    return null;
+  }
 
   const handleLogout = async () => {
     try {
