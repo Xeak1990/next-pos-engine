@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 8,
+        domain: process.env.NODE_ENV === "production" ? process.env.VERCEL_URL || undefined : undefined,
       });
       console.log("[login] Cookie bt_auth establecida, respuesta enviada");
       return response;
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         maxAge: rememberMe ? 60 * 60 * 24 * 7 : undefined,
+        domain: process.env.NODE_ENV === "production" ? process.env.VERCEL_URL || undefined : undefined,
       });
       console.log("[login] Cookie bt_customer_token establecida, respuesta enviada");
       return response;

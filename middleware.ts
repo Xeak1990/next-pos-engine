@@ -8,7 +8,6 @@ const CASHIER_ALLOWED = new Set(["/terminal", "/inventory"]);
 const CASHIER_BLOCKED = new Set(["/admin", "/reports", "/dashboard", "/users"]);
 const CUSTOMER_PREFIXES = ["/account/", "/orders/history/"];
 
-// Obtener secretos con logs
 const JWT_SECRET_RAW = process.env.JWT_SECRET || "fallback-secret-change-me";
 const JWT_CUSTOMER_SECRET_RAW = process.env.JWT_CUSTOMER_SECRET || process.env.JWT_SECRET || "fallback-secret-change-me";
 
@@ -18,25 +17,47 @@ console.log(`[middleware] JWT_CUSTOMER_SECRET definido: ${!!process.env.JWT_CUST
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW);
 const JWT_CUSTOMER_SECRET = new TextEncoder().encode(JWT_CUSTOMER_SECRET_RAW);
 
-interface AuthPayload {
+interface EmployeePayload {
   userId: string;
   role?: string;
   email?: string;
   storeId?: string;
 }
 
-async function verifyToken(token: string, secret: Uint8Array, type: "employee" | "customer"): Promise<AuthPayload | null> {
+interface CustomerPayload {
+  id: string;
+  email: string;
+  role: "customer";
+}
+
+async function verifyEmployeeToken(token: string, secret: Uint8Array): Promise<EmployeePayload | null> {
   try {
-    console.log(`[verifyToken] Verificando token ${type} (primeros 20): ${token.substring(0, 20)}...`);
+    console.log(`[verifyEmployeeToken] Verificando token (primeros 20): ${token.substring(0, 20)}...`);
     const { payload } = await jwtVerify(token, secret);
     if (typeof payload.userId !== "string") {
-      console.warn(`[verifyToken] Payload de ${type} sin userId`);
+      console.warn("[verifyEmployeeToken] Payload sin userId");
       return null;
     }
-    console.log(`[verifyToken] Token ${type} válido, userId: ${payload.userId}`);
-    return payload as unknown as AuthPayload;
+    console.log(`[verifyEmployeeToken] Token válido, userId: ${payload.userId}`);
+    return payload as unknown as EmployeePayload;
   } catch (err) {
-    console.error(`[verifyToken] Error verificando token ${type}:`, err);
+    console.error("[verifyEmployeeToken] Error verificando token:", err);
+    return null;
+  }
+}
+
+async function verifyCustomerToken(token: string, secret: Uint8Array): Promise<CustomerPayload | null> {
+  try {
+    console.log(`[verifyCustomerToken] Verificando token (primeros 20): ${token.substring(0, 20)}...`);
+    const { payload } = await jwtVerify(token, secret);
+    if (typeof payload.id !== "string" || payload.role !== "customer") {
+      console.warn("[verifyCustomerToken] Payload sin id o rol incorrecto");
+      return null;
+    }
+    console.log(`[verifyCustomerToken] Token válido, id: ${payload.id}`);
+    return payload as unknown as CustomerPayload;
+  } catch (err) {
+    console.error("[verifyCustomerToken] Error verificando token:", err);
     return null;
   }
 }
@@ -78,18 +99,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    const customerPayload = await verifyToken(customerToken, JWT_CUSTOMER_SECRET, "customer");
+    const customerPayload = await verifyCustomerToken(customerToken, JWT_CUSTOMER_SECRET);
     if (!customerPayload) {
-      console.log("[middleware] Token de cliente inválido, eliminando cookie y redirigiendo");
-      const response = NextResponse.redirect(new URL("/login", request.url));
-      response.cookies.delete("bt_customer_token");
-      return response;
+      console.log("[middleware] Token de cliente inválido, redirigiendo a /login");
+      return NextResponse.redirect(new URL("/login", request.url));
     }
     console.log("[middleware] Cliente autenticado, acceso permitido");
     return NextResponse.next();
   }
 
-  // Resto del middleware para empleados (igual)
+  // Resto para empleados
   const token = request.cookies.get("bt_auth")?.value;
   console.log(`[middleware] Cookie bt_auth existe: ${!!token}`);
   if (!token) {
@@ -97,15 +116,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const payload = await verifyToken(token, JWT_SECRET, "employee");
-  if (!payload) {
-    console.log("[middleware] Token de empleado inválido, eliminando cookie y redirigiendo");
-    const response = NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete("bt_auth");
-    return response;
+  const employeePayload = await verifyEmployeeToken(token, JWT_SECRET);
+  if (!employeePayload) {
+    console.log("[middleware] Token de empleado inválido, redirigiendo a /login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const { role } = payload;
+  const { role } = employeePayload;
   console.log(`[middleware] Usuario autenticado con rol: ${role}`);
 
   if (role === "ADMIN") {
