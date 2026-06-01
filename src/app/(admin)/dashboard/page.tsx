@@ -1,54 +1,51 @@
+// app/(admin)/dashboard/page.tsx
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
+import { formatMexicoDate, getMexicoMonday, getMexicoDate } from "../../../lib/date";
 
-function formatLowercaseDate(date: Date) {
-  return new Intl.DateTimeFormat("es-MX", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+// --------------------------------------------------------------
+// Funciones auxiliares para obtener rangos UTC basados en horario México
+// --------------------------------------------------------------
+function getUTCRangeForMexicoDay(date: Date) {
+  // Obtener año, mes, día de la fecha en horario México
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
     year: "numeric",
-  })
-    .format(date)
-    .toLowerCase();
-}
-
-function getMonday(date: Date) {
-  const monday = new Date(date);
-  const day = monday.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  monday.setDate(monday.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
-
-function formatVsYesterday(current: number, previous: number) {
-  if (previous === 0 && current === 0) return "vs ayer 0%";
-  if (previous === 0) return "vs ayer +100%";
-  const diff = ((current - previous) / previous) * 100;
-  const signal = diff >= 0 ? "+" : "";
-  return `vs ayer ${signal}${diff.toFixed(0)}%`;
-}
-
-function createChartPoints(values: number[]) {
-  const width = 560;
-  const height = 180;
-  const paddingX = 28;
-  const paddingTop = 18;
-  const paddingBottom = 28;
-  const maxValue = Math.max(...values, 1);
-  const innerWidth = width - paddingX * 2;
-  const innerHeight = height - paddingTop - paddingBottom;
-
-  return values.map((value, index) => {
-    const x = paddingX + (innerWidth / Math.max(values.length - 1, 1)) * index;
-    const y = paddingTop + innerHeight - (value / maxValue) * innerHeight;
-    return { x, y, value };
+    month: "2-digit",
+    day: "2-digit",
   });
+  const [year, month, day] = formatter.format(date).split("-").map(Number);
+  const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+  return { startUTC, endUTC };
 }
 
+function getUTCRangeForMexicoYesterday(nowMexico: Date) {
+  const yesterday = new Date(nowMexico);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return getUTCRangeForMexicoDay(yesterday);
+}
+
+function getUTCRangeForMexicoWeek() {
+  const mondayMexico = getMexicoMonday(); // Lunes en horario México
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [year, month, day] = formatter.format(mondayMexico).split("-").map(Number);
+  const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const endUTC = new Date(Date.UTC(year, month - 1, day + 6, 23, 59, 59, 999));
+  return { startUTC, endUTC };
+}
+
+// --------------------------------------------------------------
+// Componente Dashboard
+// --------------------------------------------------------------
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("bt_auth")?.value;
@@ -59,92 +56,55 @@ export default async function DashboardPage() {
   }
 
   const { role, storeId, storeName } = authPayload;
-  const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
+  const nowMexico = getMexicoDate(); // Fecha actual en horario México (objeto Date ajustado)
 
-  const startOfYesterday = new Date(startOfToday);
-  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-  const endOfYesterday = new Date(startOfYesterday);
-  endOfYesterday.setHours(23, 59, 59, 999);
-
-  const startOfWeek = getMonday(now);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(endOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
+  // Rangos para hoy y ayer
+  const { startUTC: startOfTodayUTC, endUTC: endOfTodayUTC } = getUTCRangeForMexicoDay(nowMexico);
+  const { startUTC: startOfYesterdayUTC, endUTC: endOfYesterdayUTC } = getUTCRangeForMexicoYesterday(nowMexico);
+  // Rango para la semana (lunes a domingo en México)
+  const { startUTC: startOfWeekUTC, endUTC: endOfWeekUTC } = getUTCRangeForMexicoWeek();
 
   const salesWhere = role === "MANAGER" && storeId ? { storeId } : {};
   const inventoryWhere = role === "MANAGER" && storeId ? { storeId } : {};
 
-  // ------------- CONSULTAS SECUENCIALES (evitan saturar conexiones) -------------
-  // 1. Ventas hoy
+  // Consultas secuenciales
   const salesToday = await prisma.sale.aggregate({
     _sum: { total: true },
-    where: {
-      ...salesWhere,
-      createdAt: { gte: startOfToday, lte: endOfToday },
-    },
+    where: { ...salesWhere, createdAt: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
   });
-  // 2. Ventas ayer
   const salesYesterday = await prisma.sale.aggregate({
     _sum: { total: true },
-    where: {
-      ...salesWhere,
-      createdAt: { gte: startOfYesterday, lte: endOfYesterday },
-    },
+    where: { ...salesWhere, createdAt: { gte: startOfYesterdayUTC, lte: endOfYesterdayUTC } },
   });
-  // 3. Transacciones hoy
   const transactionsToday = await prisma.sale.count({
-    where: {
-      ...salesWhere,
-      createdAt: { gte: startOfToday, lte: endOfToday },
-    },
+    where: { ...salesWhere, createdAt: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
   });
-  // 4. Stock bajo
   const lowStockCount = await prisma.inventory.count({
     where: { ...inventoryWhere, quantity: { lte: 2 } },
   });
-  // 5. Stock agotado
   const outOfStockCount = await prisma.inventory.count({
     where: { ...inventoryWhere, quantity: 0 },
   });
-  // 6. Conteo de sucursales
   const storesCount = role === "ADMIN" ? await prisma.store.count() : 1;
-  // 7. Ventas recientes (últimas 5)
   const recentSales = await prisma.sale.findMany({
     where: salesWhere,
     include: { store: true },
     orderBy: { createdAt: "desc" },
     take: 5,
   });
-  // 8. Ventas semanales (para la gráfica)
   const weeklySales = await prisma.sale.findMany({
-    where: {
-      ...salesWhere,
-      createdAt: { gte: startOfWeek, lte: endOfWeek },
-    },
+    where: { ...salesWhere, createdAt: { gte: startOfWeekUTC, lte: endOfWeekUTC } },
     select: { total: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
-  // 9. Top productos (más vendidos en la semana)
   const saleItemsThisWeek = await prisma.saleItem.findMany({
     where: {
-      sale: {
-        ...salesWhere,
-        createdAt: { gte: startOfWeek, lte: endOfWeek },
-      },
+      sale: { ...salesWhere, createdAt: { gte: startOfWeekUTC, lte: endOfWeekUTC } },
     },
     select: {
       quantity: true,
       salePrice: true,
-      variant: {
-        select: {
-          size: true,
-          product: { select: { name: true } },
-        },
-      },
+      variant: { select: { size: true, product: { select: { name: true } } } },
     },
   });
 
@@ -159,36 +119,52 @@ export default async function DashboardPage() {
       existing.quantity += qty;
       existing.total += total;
     } else {
-      topMap.set(key, {
-        name: item.variant.product.name,
-        size: item.variant.size,
-        quantity: qty,
-        total,
-      });
+      topMap.set(key, { name: item.variant.product.name, size: item.variant.size, quantity: qty, total });
     }
   }
-  const topSellers = Array.from(topMap.values())
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5);
+  const topSellers = Array.from(topMap.values()).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
 
-  // -----------------------------------------------------------------
-
+  // Preparar datos para gráfica semanal (en horario México, usando las fechas UTC de cada día)
   const weekdays = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
-  const weeklyChart = weekdays.map((label, index) => {
-    const date = new Date(startOfWeek);
-    date.setDate(startOfWeek.getDate() + index);
+  const weeklyChart = weekdays.map((_, index) => {
+    const date = new Date(startOfWeekUTC);
+    date.setUTCDate(date.getUTCDate() + index);
     const value = weeklySales
-      .filter(sale => sale.createdAt.toDateString() === date.toDateString())
+      .filter(sale => sale.createdAt.toISOString().split('T')[0] === date.toISOString().split('T')[0])
       .reduce((sum, sale) => sum + Number(sale.total), 0);
-    return { label, value };
+    return { label: weekdays[index], value };
   });
 
-  const chartCoordinates = createChartPoints(weeklyChart.map(p => p.value));
+  const chartCoordinates = (() => {
+    const width = 560;
+    const height = 180;
+    const paddingX = 28;
+    const paddingTop = 18;
+    const paddingBottom = 28;
+    const values = weeklyChart.map(p => p.value);
+    const maxValue = Math.max(...values, 1);
+    const innerWidth = width - paddingX * 2;
+    const innerHeight = height - paddingTop - paddingBottom;
+    return values.map((value, idx) => ({
+      x: paddingX + (innerWidth / Math.max(values.length - 1, 1)) * idx,
+      y: paddingTop + innerHeight - (value / maxValue) * innerHeight,
+      value,
+    }));
+  })();
   const chartPolyline = chartCoordinates.map(p => `${p.x},${p.y}`).join(" ");
+
   const salesTodayValue = Number(salesToday._sum.total || 0);
   const salesYesterdayValue = Number(salesYesterday._sum.total || 0);
   const activeStoreLabel = role === "MANAGER" ? storeName || "Sucursal activa" : "Operativas";
   const storeRatio = role === "MANAGER" ? "1/1" : `${storesCount}/${storesCount}`;
+
+  const formatVsYesterday = (current: number, previous: number) => {
+    if (previous === 0 && current === 0) return "vs ayer 0%";
+    if (previous === 0) return "vs ayer +100%";
+    const diff = ((current - previous) / previous) * 100;
+    const signal = diff >= 0 ? "+" : "";
+    return `vs ayer ${signal}${diff.toFixed(0)}%`;
+  };
 
   return (
     <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden m-[5px]">
@@ -205,7 +181,7 @@ export default async function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
-            {formatLowercaseDate(now)}
+            {formatMexicoDate(nowMexico)}
           </p>
         </div>
         <div className="flex items-center gap-[5px] mt-1">
@@ -218,9 +194,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarjetas KPI */}
+      {/* Tarjetas KPI (igual, solo cambian los valores calculados arriba) */}
       <section className="grid grid-cols-4 gap-[15px] mb-8">
-        {/* Ventas hoy */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">VENTAS HOY</p>
@@ -235,7 +210,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Transacciones */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">TRANSACCIONES</p>
@@ -250,7 +224,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Stock bajo */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">STOCK BAJO</p>
@@ -265,7 +238,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Sucursales */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">SUCURSALES</p>
@@ -281,9 +253,8 @@ export default async function DashboardPage() {
         </article>
       </section>
 
-      {/* Primera fila de tarjetas grandes */}
+      {/* Ventas semanales y Top productos */}
       <section className="grid grid-cols-2 gap-[15px] mb-[15px]">
-        {/* Ventas semanales */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between gap-4 mb-4">
@@ -314,7 +285,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Top productos */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between gap-4 mb-4">
@@ -343,7 +313,7 @@ export default async function DashboardPage() {
                         <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]">{item.size}</td>
                         <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]">{item.quantity}</td>
                         <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]">{formatCurrency(item.total)}</td>
-                      </tr>
+                       </tr>
                     ))}
                   </tbody>
                 </table>
@@ -355,9 +325,8 @@ export default async function DashboardPage() {
         </article>
       </section>
 
-      {/* Segunda fila de tarjetas grandes */}
+      {/* Ventas recientes y Alertas de stock */}
       <section className="grid grid-cols-2 gap-[15px]">
-        {/* Ventas recientes */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] overflow-hidden min-h-[260px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
@@ -386,7 +355,7 @@ export default async function DashboardPage() {
                         <td className="py-1.5 text-[11px] text-[#CBD5E1] truncate max-w-[100px]">{sale.store.name}</td>
                         <td className="py-1.5 font-mono text-[10px] text-[#888888]">{new Intl.DateTimeFormat("es-MX", { dateStyle: "short" }).format(sale.createdAt)}</td>
                         <td className="py-1.5 text-right font-mono text-[11px] text-[#E8621A]">{formatCurrency(Number(sale.total))}</td>
-                      </tr>
+                       </tr>
                     ))
                   ) : (
                     <tr><td colSpan={4} className="py-4 text-center text-[10px] text-[#888888] font-mono">Sin transacciones hoy</td></tr>
@@ -397,7 +366,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Alertas de stock */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">

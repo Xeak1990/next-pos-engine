@@ -1,43 +1,58 @@
+// app/(admin)/reports/page.tsx
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
+import { getMexicoDate, formatMexicoDate } from "../../../lib/date";
 
 type DateRangeKey = "today" | "week" | "month" | "last60";
 
-function formatLowercaseDate(date: Date) {
-  return new Intl.DateTimeFormat("es-MX", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
-    .format(date)
-    .toLowerCase();
-}
-
-function formatQueryDate(date: Date) {
+// Convierte una fecha (en horario México) a los límites UTC del día correspondiente
+function getUTCRangeForMexicoDate(date: Date) {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const month = date.getMonth();
+  const day = date.getDate();
+  const startUTC = new Date(Date.UTC(year, month, day, 0, 0, 0));
+  const endUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+  return { startUTC, endUTC };
 }
 
-function getDateRange(option: DateRangeKey) {
-  const now = new Date();
-  const endDate = new Date(now);
-  endDate.setHours(23, 59, 59, 999);
-  const startDate = new Date(now);
-  if (option === "week") {
-    startDate.setDate(now.getDate() - 6);
+// Calcula los rangos de fechas en horario México y devuelve límites UTC
+function getDateRangeUTC(option: DateRangeKey) {
+  const nowMexico = getMexicoDate(); // fecha actual en México
+  let startMexico: Date;
+  const endMexico = new Date(nowMexico);
+  endMexico.setHours(23, 59, 59, 999);
+
+  if (option === "today") {
+    startMexico = new Date(nowMexico);
+    startMexico.setHours(0, 0, 0, 0);
+  } else if (option === "week") {
+    startMexico = new Date(nowMexico);
+    startMexico.setDate(nowMexico.getDate() - 6);
+    startMexico.setHours(0, 0, 0, 0);
   } else if (option === "month") {
-    startDate.setDate(1);
-  } else if (option === "last60") {
-    startDate.setDate(now.getDate() - 59);
+    startMexico = new Date(nowMexico.getFullYear(), nowMexico.getMonth(), 1);
+    startMexico.setHours(0, 0, 0, 0);
+  } else { // last60
+    startMexico = new Date(nowMexico);
+    startMexico.setDate(nowMexico.getDate() - 59);
+    startMexico.setHours(0, 0, 0, 0);
   }
-  startDate.setHours(0, 0, 0, 0);
-  return { startDate, endDate };
+
+  const { startUTC: start } = getUTCRangeForMexicoDate(startMexico);
+  const { endUTC: end } = getUTCRangeForMexicoDate(endMexico);
+  return { startUTC: start, endUTC: end };
+}
+
+// Convierte una fecha (almacenada en UTC) a string YYYY-MM-DD en horario México
+function formatQueryDateMexico(date: Date) {
+  const mexicoDate = getMexicoDate(date);
+  const year = mexicoDate.getFullYear();
+  const month = String(mexicoDate.getMonth() + 1).padStart(2, "0");
+  const day = String(mexicoDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 const rangeOptions: Array<{ key: DateRangeKey; label: string }> = [
@@ -63,8 +78,8 @@ export default async function ReportsPage({
     return <div className="p-8 text-white">Acceso denegado</div>;
   }
 
-  const { startDate, endDate } = getDateRange(selectedRange);
-  const dateFilter = { createdAt: { gte: startDate, lte: endDate } };
+  const { startUTC, endUTC } = getDateRangeUTC(selectedRange);
+  const dateFilter = { createdAt: { gte: startUTC, lte: endUTC } };
 
   // Totales
   const totalAgg = await prisma.sale.aggregate({
@@ -131,32 +146,34 @@ export default async function ReportsPage({
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
 
-  // Tendencia diaria (con todos los días del rango, incluso sin ventas)
+  // Tendencia diaria (con todos los días del rango, en horario México)
   const allSales = await prisma.sale.findMany({
     where: dateFilter,
     select: { total: true, createdAt: true },
   });
   const trendMap = new Map<string, number>();
   for (const sale of allSales) {
-    const dateKey = formatQueryDate(sale.createdAt);
+    const dateKey = formatQueryDateMexico(sale.createdAt);
     trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + Number(sale.total));
   }
+
+  // Generar todos los días del rango (desde startUTC hasta endUTC) en México
   const salesTrend = [];
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    const key = formatQueryDate(current);
+  const currentDate = new Date(startUTC);
+  const endDate = new Date(endUTC);
+  while (currentDate <= endDate) {
+    const key = formatQueryDateMexico(currentDate);
     salesTrend.push({ date: key, total: trendMap.get(key) || 0 });
-    current.setDate(current.getDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
-  // 🔁 FILTRAR: solo días con ventas > 0 para la visualización
   const filteredSalesTrend = salesTrend.filter(point => point.total > 0);
   const maxDailySales = filteredSalesTrend.length > 0
     ? Math.max(...filteredSalesTrend.map(p => p.total), 1)
     : 1;
 
   const hasSales = totalTransactions > 0;
-  const now = new Date();
+  const nowMexico = getMexicoDate();
 
   return (
     <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden m-[5px]">
@@ -179,7 +196,7 @@ export default async function ReportsPage({
             Reportes
           </h1>
           <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
-            {formatLowercaseDate(now)}
+            {formatMexicoDate(nowMexico)}
           </p>
         </div>
         <div className="flex items-center gap-[5px] mt-1">
@@ -203,50 +220,50 @@ export default async function ReportsPage({
         ))}
       </div>
 
-      {/* Tarjetas KPI (sin cambios) */}
+      {/* Tarjetas KPI */}
       <section className="grid grid-cols-3 gap-[7px] mb-[5px]">
         {/* Total Ventas */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Total Ventas</p>
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Total Ventas</p>
           </div>
           <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
-            <p className="text-[26px] font-[900] text-[#2ECC71] uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif !important", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
+            <p className="text-[26px] font-[900] text-[#2ECC71] uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
               {formatCurrency(totalSales)}
             </p>
           </div>
           <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Período seleccionado</p>
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">Período seleccionado</p>
           </div>
         </article>
 
         {/* Transacciones */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Transacciones</p>
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Transacciones</p>
           </div>
           <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
-            <p className="text-[26px] font-[900] text-[#E8621A] uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif !important", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
+            <p className="text-[26px] font-[900] text-[#E8621A] uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
               {totalTransactions}
             </p>
           </div>
           <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Período seleccionado</p>
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">Período seleccionado</p>
           </div>
         </article>
 
         {/* Ticket Promedio */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
-            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Ticket Promedio</p>
+            <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Ticket Promedio</p>
           </div>
           <div className="absolute inset-0 flex items-center justify-start pl-[6%] pointer-events-none">
-            <p className="text-[26px] font-[900] text-white uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif !important", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
+            <p className="text-[26px] font-[900] text-white uppercase flex items-center h-full" style={{ fontFamily: "Arial, sans-serif", letterSpacing: "-0.04em", transform: "scaleY(1.35) translateY(15px)", transformOrigin: "center center" }}>
               {formatCurrency(averageTicket)}
             </p>
           </div>
           <div className="w-[88%] mx-auto pb-4 mt-auto z-10">
-            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight" style={{ fontFamily: "Arial, sans-serif !important" }}>Período seleccionado</p>
+            <p className="text-[11px] font-semibold text-[#9CA3AF] font-sans leading-tight">Período seleccionado</p>
           </div>
         </article>
       </section>
@@ -255,7 +272,7 @@ export default async function ReportsPage({
       <section className="mb-[5px]">
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4" style={{ borderRadius: "12px !important" }}>
           <div className="w-[94%] mx-auto flex flex-col h-full">
-            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif !important", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
+            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
               Ventas por sucursal
             </h2>
             <div className="overflow-x-auto">
@@ -263,17 +280,17 @@ export default async function ReportsPage({
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Sucursal</th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Ventas</th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Transacciones</th>
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Sucursal</th>
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Ventas</th>
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Transacciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {salesByStore.map((store, idx) => (
                       <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>{store.store}</td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>{formatCurrency(store.sales)}</td>
-                        <td className="py-2 text-right font-mono text-[12px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>{store.transactions}</td>
+                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white">{store.store}</td>
+                        <td className="py-2 text-right font-mono text-[12px] text-[#2ECC71]">{formatCurrency(store.sales)}</td>
+                        <td className="py-2 text-right font-mono text-[12px] text-[#E8621A]">{store.transactions}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -288,10 +305,10 @@ export default async function ReportsPage({
 
       {/* Tendencia y Top productos */}
       <section className="grid grid-cols-2 gap-[6px] mb-[5px]">
-        {/* Tendencia diaria - SOLO DÍAS CON VENTAS > 0 */}
+        {/* Tendencia diaria */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4" style={{ borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto flex flex-col h-full">
-            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif !important", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
+            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
               Tendencia - Ventas diarias
             </h2>
             {filteredSalesTrend.length > 0 ? (
@@ -299,8 +316,8 @@ export default async function ReportsPage({
                 {filteredSalesTrend.map((point) => (
                   <div key={point.date}>
                     <div className="mb-1 flex items-center justify-between gap-3">
-                      <span className="font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>{point.date}</span>
-                      <span className="font-mono text-[11px] text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>{formatCurrency(point.total)}</span>
+                      <span className="font-mono text-[11px] text-[#CBD5E1]">{point.date}</span>
+                      <span className="font-mono text-[11px] text-white">{formatCurrency(point.total)}</span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-[#1F1F1F]">
                       <div
@@ -321,10 +338,10 @@ export default async function ReportsPage({
           </div>
         </article>
 
-        {/* Top productos (sin cambios) */}
+        {/* Top productos */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4" style={{ borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto flex flex-col h-full">
-            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif !important", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
+            <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
               Top productos más vendidos
             </h2>
             <div className="overflow-x-auto">
@@ -332,19 +349,19 @@ export default async function ReportsPage({
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead>
                     <tr>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Modelo</th>
-                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Talla</th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Cant.</th>
-                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase" style={{ fontFamily: "Arial, sans-serif !important" }}>Total</th>
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Modelo</th>
+                      <th className="pb-2 text-left font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Talla</th>
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Cant.</th>
+                      <th className="pb-2 text-right font-mono text-[10px] tracking-[0.26em] text-[#8B95A1] uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topSellers.map((item, idx) => (
                       <tr key={idx} className="border-b border-[#222222] last:border-0">
-                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white" style={{ fontFamily: "Arial, sans-serif !important" }}>{item.modelName}</td>
-                        <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]" style={{ fontFamily: "Arial, sans-serif !important" }}>{item.size}</td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif !important" }}>{item.quantity}</td>
-                        <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif !important" }}>{formatCurrency(item.total)}</td> 
+                        <td className="py-2 text-left font-sans text-[13px] font-semibold text-white">{item.modelName}</td>
+                        <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]">{item.size}</td>
+                        <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]">{item.quantity}</td>
+                        <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]">{formatCurrency(item.total)}</td>
                       </tr>
                     ))}
                   </tbody>
