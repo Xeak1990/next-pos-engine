@@ -12,7 +12,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
 
-  const isPublicRoute = pathname === "/login" || pathname === "/register" || pathname === "/catalog" || pathname === "/";
+  // Solo rutas realmente públicas (sin autenticación)
+  const isPublicRoute = pathname === "/login" || pathname === "/register";
 
   useEffect(() => {
     isMounted.current = true;
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
+  // Mostrar sidebar solo si hay un empleado autenticado (no cliente)
   const showSidebar = !isPublicRoute && user !== null;
 
   return (

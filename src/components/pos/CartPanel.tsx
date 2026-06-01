@@ -5,6 +5,7 @@ import { formatCurrency } from "../../lib/utils";
 import { useCart } from "../../lib/CartContext";
 import PaymentModal from "./PaymentModal";
 import TicketModal from "./TicketModal";
+import { createSale } from "../../actions/sales";
 
 interface CartItemSummary {
   variantId: string;
@@ -26,15 +27,19 @@ interface OrderSummary {
   storeLocation: string;
 }
 
-const generateFolio = () => `VTA-${Math.floor(1000 + Math.random() * 9000)}`;
+interface CartPanelProps {
+  storeLocation: string;
+  storeId: string;
+}
 
-export default function CartPanel({ storeLocation }: { storeLocation: string }) {
+export default function CartPanel({ storeLocation, storeId }: CartPanelProps) {
   const { items, addItem, removeOne, removeItem, clearCart } = useCart();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [lastOrder, setLastOrder] = useState<OrderSummary | null>(null);
   const [discountValue, setDiscountValue] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const iva = subtotal * 0.16;
@@ -55,9 +60,32 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
 
   const total = baseForDiscount - discountAmount;
 
-  const handleProcessPayment = (method: string) => {
+  const handleProcessPayment = async (method: string) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    const saleData = {
+      storeId,
+      items: items.map(item => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+    };
+
+    console.log("[CartPanel] Enviando venta:", saleData);
+    const result = await createSale(saleData);
+
+    if (!result.success) {
+      alert(`Error al procesar la venta: ${result.error}`);
+      setIsProcessing(false);
+      return;
+    }
+
+    // result.saleId existe porque result.success === true
+    const folioReal = result.saleId!.slice(-8).toUpperCase();
     const orderData: OrderSummary = {
-      folio: generateFolio(),
+      folio: `VTA-${folioReal}`,
       items,
       subtotal,
       iva,
@@ -69,6 +97,7 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
     setLastOrder(orderData);
     setIsPaymentOpen(false);
     setIsTicketOpen(true);
+    setIsProcessing(false);
   };
 
   return (
@@ -90,11 +119,10 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
           </div>
         </header>
 
-        {/* Lista de productos – con scroll interno */}
         <div className="custom-scrollbar flex-1 overflow-y-auto py-[5px] min-h-0">
           {items.length > 0 ? (
             <div className="space-y-[5px]">
-              {items.map((item: CartItemSummary) => (
+              {items.map((item) => (
                 <article key={item.variantId} className="rounded-[12px] bg-[#111111] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -107,7 +135,6 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                       type="button"
                       onClick={() => removeItem(item.variantId)}
                       className="border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-[0.16em] text-[#9CA3AF] hover:text-[#E8621A]"
-                      style={{ fontFamily: "Arial, sans-serif" }}
                     >
                       Quitar
                     </button>
@@ -117,14 +144,7 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                       <button
                         type="button"
                         onClick={() => removeOne(item.variantId)}
-                        style={{
-                          background: "transparent",
-                          color: "white",
-                          border: "none",
-                          padding: "7px 7px",
-                          cursor: "pointer",
-                        }}
-                        className="hover:bg-[#242424]"
+                        className="px-2 py-1 text-white hover:bg-[#242424]"
                       >
                         -
                       </button>
@@ -134,14 +154,7 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                       <button
                         type="button"
                         onClick={() => addItem(item, item.stockAvailable)}
-                        style={{
-                          background: "transparent",
-                          color: "white",
-                          border: "none",
-                          padding: "7px 7px",
-                          cursor: "pointer",
-                        }}
-                        className="hover:bg-[#242424]"
+                        className="px-2 py-1 text-white hover:bg-[#242424]"
                       >
                         +
                       </button>
@@ -165,7 +178,6 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
           )}
         </div>
 
-        {/* Footer con el resumen y botones – fijo abajo */}
         <footer className="py-[5px] flex-shrink-0">
           <div className="rounded-[12px] border border-[#333333] bg-[#1A1A1A]">
             <div className="w-[95%] mx-auto py-[5px] space-y-[5px]">
@@ -180,12 +192,11 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
 
               <div className="flex items-center justify-between gap-2 text-sm text-[#9CA3AF]">
                 <div className="flex items-center gap-2">
-                  <span style={{ fontFamily: "Arial, sans-serif" }}>Descuento</span>
+                  <span>Descuento</span>
                   <select
                     value={discountType}
                     onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}
                     className="bg-[#0F0F0F] border border-[#333333] rounded-[8px] px-2 py-1 text-xs text-white"
-                    style={{ fontFamily: "Arial, sans-serif" }}
                   >
                     <option value="percentage">%</option>
                     <option value="fixed">$</option>
@@ -199,7 +210,6 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                     value={discountValue}
                     onChange={(e) => setDiscountValue(e.target.value)}
                     className="w-24 text-right border border-[#333333] bg-[#0F0F0F] px-3 py-1 text-sm text-white rounded-[8px]"
-                    style={{ fontFamily: "Arial, sans-serif" }}
                     placeholder={discountType === "percentage" ? "%" : "$"}
                   />
                 </div>
@@ -228,16 +238,14 @@ export default function CartPanel({ storeLocation }: { storeLocation: string }) 
                   }}
                   disabled={items.length === 0}
                   className="bt-button-ghost w-full px-6 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-40 rounded-[10px]"
-                  style={{ fontFamily: "Arial, sans-serif" }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsPaymentOpen(true)}
-                  disabled={items.length === 0 || total < 0}
+                  disabled={items.length === 0 || total < 0 || isProcessing}
                   className="bt-button-primary w-full px-6 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-40 !rounded-[10px]"
-                  style={{ fontFamily: "Arial, sans-serif" }}
                 >
                   Pagar
                 </button>

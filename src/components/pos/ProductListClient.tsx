@@ -37,17 +37,11 @@ function formatLowercaseDate(date: Date) {
     day: "numeric",
     month: "long",
     year: "numeric",
-  })
-    .format(date)
-    .toLowerCase();
+  }).format(date).toLowerCase();
 }
 
 function normalizeString(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 export default function ProductListClient({
@@ -63,22 +57,17 @@ export default function ProductListClient({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-  const [selectedStore, setSelectedStore] = useState(initialStoreLocation ?? "");
+  const [selectedStore, setSelectedStore] = useState(initialStoreName ?? "");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<GroupedProduct | null>(null);
   const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
 
-  // ============================================================
-  // AJUSTES PERSONALIZABLES (ancho y altura en píxeles)
-  // ============================================================
   const CARD_WIDTH_PX = 220;
   const STORE_SELECTOR_WIDTH_PX = 200;
   const STORE_SELECTOR_HEIGHT_PX = 65;
   const SEARCH_BAR_HEIGHT_PX = 40;
-  // ============================================================
-
   const now = new Date();
 
   useEffect(() => {
@@ -96,7 +85,6 @@ export default function ProductListClient({
     fetchUserRole();
   }, []);
 
-  // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -107,45 +95,95 @@ export default function ProductListClient({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const storeOptions = Array.from(
-    new Set(products.map((product) => product.storeName).filter(Boolean)),
-  ).sort((left, right) => left.localeCompare(right, "es"));
+  // Opciones de sucursal (nombres comerciales)
+  const storeOptions = useMemo(() => {
+    const options = Array.from(
+      new Set(products.map((product) => product.storeName?.trim()).filter((name): name is string => !!name))
+    ).sort((left, right) => left.localeCompare(right, "es"));
+    console.log("[ProductListClient] storeOptions:", options);
+    return options;
+  }, [products]);
 
-  const categoryOptions = [
-    "TODOS",
-    ...Array.from(
-      new Set(products.map((product) => product.category).filter(Boolean)),
-    ).sort((left, right) => left.localeCompare(right, "es")),
-  ];
+  const categoryOptions = useMemo(() => {
+    return [
+      "TODOS",
+      ...Array.from(new Set(products.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es")),
+    ];
+  }, [products]);
 
-  const activeStore = storeOptions.includes(selectedStore)
-    ? selectedStore
-    : initialStoreLocation && storeOptions.includes(initialStoreLocation)
-      ? initialStoreLocation
-      : storeOptions[0] || "";
+  // Lógica central
+  const { activeStore, canChangeBranch, canEdit, filteredProducts } = useMemo(() => {
+    const isAdmin = userRole === "ADMIN";
+    const hasFixedStore = Boolean(initialStoreName) && !isAdmin;
+    console.log("[ProductListClient] hasFixedStore:", hasFixedStore, "initialStoreName:", initialStoreName, "userRole:", userRole);
 
-  const hasFixedStore = Boolean(initialStoreLocation);
-  const canChangeBranch = userRole === "ADMIN";
-  const canEdit = !hasFixedStore || activeStore === initialStoreLocation;
+    let displayStore: string;
+    let filterValue: string;
+    let canChange: boolean;
+    let canEditVal: boolean;
 
-  const selectedStoreNormalized = normalizeString(activeStore);
-  const selectedCategoryNormalized = normalizeString(selectedCategory);
-  const normalizedSearch = normalizeString(searchTerm);
+    if (hasFixedStore) {
+      displayStore = initialStoreName!;
+      filterValue = initialStoreName!;   // Usamos el nombre comercial directamente
+      canChange = false;
+      canEditVal = true;
+    } else {
+      canChange = userRole === "ADMIN";
+      const computedActive = storeOptions.includes(selectedStore)
+        ? selectedStore
+        : initialStoreName && storeOptions.includes(initialStoreName)
+        ? initialStoreName
+        : storeOptions[0] || "";
+      displayStore = computedActive;
+      filterValue = displayStore;
+      canEditVal = !hasFixedStore || displayStore === initialStoreName;
+    }
 
-  const filteredProducts = products.filter((product) => {
-    const matchesStore =
-      !selectedStoreNormalized ||
-      normalizeString(product.storeName || "") === selectedStoreNormalized;
-    const matchesCategory =
-      selectedCategory === "TODOS" ||
-      normalizeString(product.category || "") === selectedCategoryNormalized;
-    const matchesSearch =
-      !normalizedSearch ||
-      normalizeString(product.name).includes(normalizedSearch) ||
-      normalizeString(product.brand).includes(normalizedSearch) ||
-      normalizeString(product.size).includes(normalizedSearch);
-    return matchesStore && matchesCategory && matchesSearch;
-  });
+    console.log("[ProductListClient] filterValue (nombre comercial):", filterValue);
+
+    const selectedStoreNormalized = normalizeString(filterValue);
+    const selectedCategoryNormalized = normalizeString(selectedCategory);
+    const normalizedSearch = normalizeString(searchTerm);
+
+    let filtered = products.filter((product) => {
+      const matchesStore = !selectedStoreNormalized || normalizeString(product.storeName || "") === selectedStoreNormalized;
+      const matchesCategory = selectedCategory === "TODOS" || normalizeString(product.category || "") === selectedCategoryNormalized;
+      const matchesSearch =
+        !normalizedSearch ||
+        normalizeString(product.name).includes(normalizedSearch) ||
+        normalizeString(product.brand).includes(normalizedSearch) ||
+        normalizeString(product.size).includes(normalizedSearch);
+      return matchesStore && matchesCategory && matchesSearch;
+    });
+
+    console.log("[ProductListClient] Productos después de filtro principal:", filtered.length);
+
+    if (hasFixedStore && filtered.length === 0 && products.length > 0) {
+      console.warn("[ProductListClient] No hay coincidencias con normalización, intentando coincidencia exacta (sin normalize)");
+      filtered = products.filter((product) => {
+        const matchesStore = product.storeName?.trim() === filterValue;
+        const matchesCategory = selectedCategory === "TODOS" || normalizeString(product.category) === selectedCategoryNormalized;
+        const matchesSearch =
+          !normalizedSearch ||
+          normalizeString(product.name).includes(normalizedSearch) ||
+          normalizeString(product.brand).includes(normalizedSearch) ||
+          normalizeString(product.size).includes(normalizedSearch);
+        return matchesStore && matchesCategory && matchesSearch;
+      });
+      console.log("[ProductListClient] Productos después de fallback exacto:", filtered.length);
+      if (filtered.length === 0) {
+        console.error("[ProductListClient] No hay productos para la sucursal:", filterValue);
+        console.error("[ProductListClient] product.storeName únicos:", [...new Set(products.map(p => p.storeName))]);
+      }
+    }
+
+    return {
+      activeStore: displayStore,
+      canChangeBranch: canChange,
+      canEdit: canEditVal,
+      filteredProducts: filtered,
+    };
+  }, [products, userRole, initialStoreName, storeOptions, selectedStore, selectedCategory, searchTerm]);
 
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, GroupedProduct>();
@@ -162,7 +200,7 @@ export default function ProductListClient({
       const group = groups.get(key)!;
       const priceNum = Number(p.price);
       group.variants.push({
-        id: p.id,
+        id: p.id,          // variantId real
         size: p.size,
         color: p.color,
         stock: p.stock,
@@ -178,13 +216,14 @@ export default function ProductListClient({
   };
 
   const handleAddToCart = (variantId: string, size: string, price: number, stock: number) => {
-    const product = filteredProducts.find(p => p.id === variantId);
-    if (!product) return;
+    console.log("[ProductListClient] Agregando al carrito, variantId:", variantId);
+    if (!selectedGroup) return;
+    const productName = selectedGroup.name;
     addItem(
       {
-        variantId: product.id,
-        name: product.name,
-        size: product.size,
+        variantId: variantId,
+        name: productName,
+        size: size,
         price: price,
         quantity: 1,
         stockAvailable: stock,
@@ -193,9 +232,15 @@ export default function ProductListClient({
     );
   };
 
+  const finalStoreOptions = useMemo(() => {
+    if (activeStore && !storeOptions.includes(activeStore)) {
+      return [activeStore, ...storeOptions].sort((a, b) => a.localeCompare(b, "es"));
+    }
+    return storeOptions;
+  }, [storeOptions, activeStore]);
+
   return (
     <section className="flex h-full flex-col">
-      {/* Cabecera */}
       <div className="border-b border-[#333333] px-4 py-3">
         <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
           <Link href="/dashboard" className="hover:text-white transition-colors duration-200">
@@ -206,13 +251,7 @@ export default function ProductListClient({
         </nav>
         <h1
           className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
-          style={{
-            fontFamily: "Bebas Neue, sans-serif",
-            transform: "scale(0.85, 1.15)",
-            transformOrigin: "left center",
-            WebkitTextStroke: "1.5px white",
-            letterSpacing: "0.12em",
-          }}
+          style={{ fontFamily: "Bebas Neue, sans-serif", transform: "scale(0.85, 1.15)", transformOrigin: "left center", WebkitTextStroke: "1.5px white", letterSpacing: "0.12em" }}
         >
           punto de venta
         </h1>
@@ -220,11 +259,7 @@ export default function ProductListClient({
           {formatLowercaseDate(now)}
         </p>
 
-        {/* Sucursal y búsqueda */}
-        <div
-          className="mt-4 mb-[15px] grid gap-[15px]"
-          style={{ gridTemplateColumns: `${STORE_SELECTOR_WIDTH_PX}px 1fr` }}
-        >
+        <div className="mt-4 mb-[15px] grid gap-[15px]" style={{ gridTemplateColumns: `${STORE_SELECTOR_WIDTH_PX}px 1fr` }}>
           {/* Sucursal */}
           <div>
             <p className="text-[10px] uppercase tracking-[0.22em] text-[#94A3B8] mb-[5px]" style={{ fontFamily: "Arial, sans-serif" }}>
@@ -271,7 +306,7 @@ export default function ProductListClient({
                     overflowY: "auto",
                   }}
                 >
-                  {storeOptions.map((store) => (
+                  {finalStoreOptions.map((store) => (
                     <button
                       key={store}
                       type="button"
@@ -291,12 +326,8 @@ export default function ProductListClient({
                         cursor: "pointer",
                         transition: "background-color 0.2s",
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#2A2A2A";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#1A1A1A";
-                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#2A2A2A")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#1A1A1A")}
                     >
                       {store}
                     </button>
@@ -304,19 +335,19 @@ export default function ProductListClient({
                 </div>
               )}
             </div>
-            {hasFixedStore && !canEdit && (
-              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif" }}>
-                ⚠️ Consulta
-              </p>
-            )}
-            {hasFixedStore && canEdit && (
+            {!canChangeBranch && activeStore && (
               <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#2ECC71]" style={{ fontFamily: "Arial, sans-serif" }}>
                 ✅ Venta activa
               </p>
             )}
+            {canChangeBranch && !canEdit && (
+              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif" }}>
+                ⚠️ Consulta
+              </p>
+            )}
           </div>
 
-          {/* Búsqueda - input directo con tamaño original */}
+          {/* Búsqueda */}
           <div>
             <p className="text-[10px] uppercase tracking-[0.22em] text-[#94A3B8] mb-[5px]" style={{ fontFamily: "Arial, sans-serif" }}>
               Búsqueda
@@ -327,11 +358,11 @@ export default function ProductListClient({
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Modelo, marca o talla"
               style={{
-                width: "100%",
+                width: "97%",
                 borderRadius: "12px",
                 border: "1px solid #333333",
                 backgroundColor: "#111111",
-                padding: "10px 12px", // tamaño original
+                padding: "10px 12px",
                 fontSize: "0.75rem",
                 fontFamily: "Arial, sans-serif",
                 color: "#FFFFFF",
@@ -353,11 +384,7 @@ export default function ProductListClient({
               key={category}
               type="button"
               onClick={() => setSelectedCategory(category)}
-              className={
-                selectedCategory === category
-                  ? "bt-button-primary shrink-0 px-3 py-1 text-[10px]"
-                  : "bt-button-ghost shrink-0 px-3 py-1 text-[10px]"
-              }
+              className={selectedCategory === category ? "bt-button-primary shrink-0 px-3 py-1 text-[10px]" : "bt-button-ghost shrink-0 px-3 py-1 text-[10px]"}
               style={{ fontFamily: "Arial, sans-serif" }}
             >
               {category}
@@ -371,42 +398,43 @@ export default function ProductListClient({
         {isLoading ? (
           <div className="flex flex-wrap gap-3">
             {Array.from({ length: 12 }).map((_, index) => (
-              <div
-                key={index}
-                className="animate-pulse rounded-[12px] border border-[#333333] bg-[#141414]"
-                style={{ width: CARD_WIDTH_PX, height: 200 }}
-              />
+              <div key={index} className="animate-pulse rounded-[12px] border border-[#333333] bg-[#141414]" style={{ width: CARD_WIDTH_PX, height: 200 }} />
             ))}
           </div>
         ) : groupedProducts.length > 0 ? (
-          <div
-            className="grid gap-[10px] p-1"
-            style={{
-              gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_WIDTH_PX}px, 1fr))`,
-            }}
-          >
+          <div className="grid gap-[10px] p-1" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_WIDTH_PX}px, 1fr))` }}>
             {groupedProducts.map((group) => (
               <article
                 key={group.name}
                 className={`rounded-[12px] border bg-[#151515] p-[5px] flex flex-col transition-all hover:border-[#E8621A] hover:shadow-md ${
-                  group.variants.every(v => v.stock === 0) ? "border-[#333333] opacity-65" : "border-[#333333]"
+                  group.variants.every((v) => v.stock === 0) ? "border-[#333333] opacity-65" : "border-[#333333]"
                 }`}
               >
                 <div className="w-full aspect-square mb-1 bg-[#0F0F0F] rounded-[8px] flex items-center justify-center text-3xl">👟</div>
                 <div className="flex-1 overflow-hidden">
-                  <h3 className="text-xs font-bold text-white leading-tight line-clamp-2" style={{ fontFamily: "Arial, sans-serif" }}>{group.name}</h3>
-                  <p className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Arial, sans-serif" }}>{group.brand} / {group.variants.length} tallas</p>
+                  <h3 className="text-xs font-bold text-white leading-tight line-clamp-2" style={{ fontFamily: "Arial, sans-serif" }}>
+                    {group.name}
+                  </h3>
+                  <p className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Arial, sans-serif" }}>
+                    {group.brand} / {group.variants.length} tallas
+                  </p>
                   <p className="font-mono text-xs font-bold text-[#2ECC71] mt-0.5">{formatCurrency(group.minPrice)}</p>
                 </div>
                 <div className="mt-2">
-                  {group.variants.some(v => v.stock > 0) ? (
+                  {group.variants.some((v) => v.stock > 0) ? (
                     canEdit ? (
-                      <button type="button" onClick={() => handleOpenModal(group)} className="bt-button-primary w-full py-0.5 text-[9px] rounded-[8px]" style={{ fontFamily: "Arial, sans-serif" }}>Seleccionar talla</button>
+                      <button type="button" onClick={() => handleOpenModal(group)} className="bt-button-primary w-full py-0.5 text-[9px] rounded-[8px]" style={{ fontFamily: "Arial, sans-serif" }}>
+                        Seleccionar talla
+                      </button>
                     ) : (
-                      <div className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#6B7280]" style={{ fontFamily: "Arial, sans-serif" }}>Solo consulta</div>
+                      <div className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#6B7280]" style={{ fontFamily: "Arial, sans-serif" }}>
+                        Solo consulta
+                      </div>
                     )
                   ) : (
-                    <div className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif" }}>Agotado</div>
+                    <div className="w-full text-center text-[9px] uppercase tracking-[0.18em] text-[#E8621A]" style={{ fontFamily: "Arial, sans-serif" }}>
+                      Agotado
+                    </div>
                   )}
                 </div>
               </article>
@@ -420,7 +448,6 @@ export default function ProductListClient({
         )}
       </div>
 
-      {/* Modal de selección de talla */}
       {selectedGroup && (
         <ProductSizeModal
           isOpen={true}

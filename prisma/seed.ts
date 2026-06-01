@@ -250,12 +250,24 @@ async function main() {
   // 1. Limpieza completa de datos transaccionales
   await cleanDatabase();
 
-  // 2. Categoría base
-  const calzadoCat = await prisma.category.upsert({
-    where: { slug: "calzado" },
-    update: {},
-    create: { name: "Calzado", slug: "calzado" },
-  });
+  // 2. Crear categorías variadas
+  const categoriesData = [
+    { name: "Casual", slug: "casual" },
+    { name: "Deportivo", slug: "deportivo" },
+    { name: "Bota", slug: "bota" },
+    { name: "Retro/Vintage", slug: "retro-vintage" },
+    { name: "Yeezy", slug: "yeezy" },
+  ];
+
+  const categories = [];
+  for (const cat of categoriesData) {
+    const category = await prisma.category.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: { name: cat.name, slug: cat.slug },
+    });
+    categories.push(category);
+  }
 
   // 3. Sucursales
   const storesData = [
@@ -325,7 +337,7 @@ async function main() {
     }
   }
 
-  // 5. Usuario cliente de prueba (modelo Customer)
+  // 5. Usuario cliente de prueba (modelo Customer) – con datos completos
   const testCustomerPassword = "password123";
   const hashedCustomerPassword = await hashPassword(testCustomerPassword);
   await prisma.customer.upsert({
@@ -335,14 +347,14 @@ async function main() {
       email: "test.customer@gmail.com",
       password: hashedCustomerPassword,
       name: "Cliente de Prueba",
-      phone: null,
-      address: null,
-      city: null,
-      postalCode: null,
+      phone: "2281234567",
+      address: "Av. Xalapa 123, Centro",
+      city: "Xalapa",
+      postalCode: "91000",
     },
   });
 
-  // 6. Productos y variantes (recrea inventario desde cero)
+  // 6. Productos y variantes con categorías aleatorias
   const productsData = [
     { name: "Dunk Low", brand: "Nike", basePrice: 2499, skuPrefix: "NIKE-DUNK" },
     { name: "Stan Smith", brand: "Adidas", basePrice: 2199, skuPrefix: "AD-STAN" },
@@ -350,16 +362,19 @@ async function main() {
     { name: "RS-X", brand: "Puma", basePrice: 1899, skuPrefix: "PUMA-RSX" },
     { name: "574", brand: "New Balance", basePrice: 1799, skuPrefix: "NB-574" },
     { name: "Chuck Taylor", brand: "Converse", basePrice: 1299, skuPrefix: "CONV-CHUCK" },
+    // Puedes añadir más productos si quieres, pero con categorías variadas se distribuirán
   ];
 
   const sizes = ["25", "26", "27", "28", "29", "30", "31"];
 
   for (const p of productsData) {
+    // Elegir una categoría aleatoria
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     await prisma.product.create({
       data: {
         name: p.name,
         brand: p.brand,
-        categoryId: calzadoCat.id,
+        categoryId: randomCategory.id,
         variants: {
           create: sizes.map((size) => ({
             sku: `${p.skuPrefix}-${size}`,
@@ -378,7 +393,7 @@ async function main() {
     });
   }
 
-  // 7. Generar ventas ficticias
+  // 7. Generar ventas ficticias (entre 45 y 55)
   const ventasObjetivo = randomInt(45, 55);
   await generateFakeSales(ventasObjetivo);
 

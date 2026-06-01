@@ -4,25 +4,21 @@ import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
-import {
-  formatMexicoDate,
-  getMexicoMonday,
-  getMexicoDate,
-} from "../../../lib/date";
+import { getMexicoMonday } from "../../../lib/date";
 
 export const revalidate = 3600;
 
 // --------------------------------------------------------------
-// Funciones auxiliares (sin cambios)
+// Funciones auxiliares
 // --------------------------------------------------------------
-function getUTCRangeForMexicoDay(date: Date) {
+function getUTCRangeForMexicoDay(mexicoDate: Date) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  const [year, month, day] = formatter.format(date).split("-").map(Number);
+  const [year, month, day] = formatter.format(mexicoDate).split("-").map(Number);
   const startUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
   const endUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
   return { startUTC, endUTC };
@@ -48,6 +44,39 @@ function getUTCRangeForMexicoWeek() {
   return { startUTC, endUTC };
 }
 
+// Convierte una fecha (almacenada en UTC) a string YYYY-MM-DD en horario México
+function toMexicoDateString(date: Date): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
+}
+
+// Obtiene la fecha actual en México (a la medianoche) sin afectar la hora local
+function getCurrentMexicoDate(): Date {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [year, month, day] = formatter.format(new Date()).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getCurrentMexicoDateFormatted() {
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone: "America/Mexico_City",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date()).toLowerCase();
+}
+
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("bt_auth")?.value;
@@ -58,7 +87,7 @@ export default async function DashboardPage() {
   }
 
   const { role, storeId, storeName } = authPayload;
-  const nowMexico = getMexicoDate();
+  const nowMexico = getCurrentMexicoDate(); // fecha actual en México (medianoche)
 
   const { startUTC: startOfTodayUTC, endUTC: endOfTodayUTC } = getUTCRangeForMexicoDay(nowMexico);
   const { startUTC: startOfYesterdayUTC, endUTC: endOfYesterdayUTC } = getUTCRangeForMexicoYesterday(nowMexico);
@@ -87,8 +116,7 @@ export default async function DashboardPage() {
   });
   const storesCount = role === "ADMIN" ? await prisma.store.count() : 1;
 
-  // ========== Alertas de stock (nuevas consultas) ==========
-  // Productos con stock CRÍTICO = 0 (incluye sucursal, color, producto, talla)
+  // ========== Alertas de stock ==========
   const criticalItems = await prisma.inventory.findMany({
     where: { ...inventoryWhere, quantity: 0 },
     select: {
@@ -106,7 +134,6 @@ export default async function DashboardPage() {
     take: 20,
   });
 
-  // Productos con stock BAJO (1 a 5 unidades)
   const lowStockItems = await prisma.inventory.findMany({
     where: { ...inventoryWhere, quantity: { gte: 1, lte: 5 } },
     select: {
@@ -144,21 +171,24 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "asc" },
   });
 
+  // Agrupar por día en México
   const salesByDay = new Map<string, number>();
   for (const sale of weeklySalesRaw) {
-    const dayKey = sale.createdAt.toISOString().split("T")[0];
+    const dayKey = toMexicoDateString(sale.createdAt);
     salesByDay.set(dayKey, (salesByDay.get(dayKey) || 0) + Number(sale.total));
   }
 
+  // Generar los días de la semana (lunes a domingo) en México
   const weekdays = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
+  const mondayMexico = getMexicoMonday();
   const weeklyChart = weekdays.map((_, index) => {
-    const date = new Date(startOfWeekUTC);
-    date.setUTCDate(date.getUTCDate() + index);
-    const dayKey = date.toISOString().split("T")[0];
+    const date = new Date(mondayMexico);
+    date.setDate(date.getDate() + index);
+    const dayKey = toMexicoDateString(date);
     return { label: weekdays[index], value: salesByDay.get(dayKey) || 0 };
   });
 
-  // ========== Top productos (más vendidos de la semana) ==========
+  // ========== Top productos ==========
   const topVariants = await prisma.saleItem.groupBy({
     by: ["variantId"],
     where: {
@@ -233,7 +263,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden m-[5px]">
-      {/* Cabecera */}
       <div className="flex w-full items-start justify-between mb-[15px]">
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
@@ -246,7 +275,7 @@ export default async function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
-            {formatMexicoDate(nowMexico)}
+            {getCurrentMexicoDateFormatted()}
           </p>
         </div>
         <div className="flex items-center gap-[5px] mt-1">
@@ -291,7 +320,7 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Stock bajo (contador) */}
+        {/* Stock bajo */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">STOCK BAJO</p>
@@ -438,7 +467,7 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* ALERTAS DE STOCK (versión mejorada) */}
+        {/* Alertas de stock */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
@@ -462,21 +491,14 @@ export default async function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">
                         <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-red-400">
-                          Crítico (sin stock)
-                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-red-400">Crítico (sin stock)</span>
                       </div>
                       <ul className="space-y-2 text-[11px] text-[#CBD5E1]">
                         {criticalItems.map((inv, idx) => (
                           <li key={idx} className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <span className="font-medium text-white">
-                                {inv.variant.product.brand} {inv.variant.product.name}
-                              </span>
-                              <div className="text-[10px] text-[#9CA3AF]">
-                                {inv.variant.color ? `${inv.variant.color} • ` : ""}
-                                Talla {inv.variant.size} • {inv.store.name}
-                              </div>
+                              <span className="font-medium text-white">{inv.variant.product.brand} {inv.variant.product.name}</span>
+                              <div className="text-[10px] text-[#9CA3AF]">{inv.variant.color ? `${inv.variant.color} • ` : ""}Talla {inv.variant.size} • {inv.store.name}</div>
                             </div>
                             <span className="text-red-400 font-mono whitespace-nowrap">0 uds</span>
                           </li>
@@ -490,21 +512,14 @@ export default async function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">
                         <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_6px_#eab308]" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">
-                          Atención (stock bajo)
-                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Atención (stock bajo)</span>
                       </div>
                       <ul className="space-y-2 text-[11px] text-[#CBD5E1]">
                         {lowStockItems.map((inv, idx) => (
                           <li key={idx} className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <span className="font-medium text-white">
-                                {inv.variant.product.brand} {inv.variant.product.name}
-                              </span>
-                              <div className="text-[10px] text-[#9CA3AF]">
-                                {inv.variant.color ? `${inv.variant.color} • ` : ""}
-                                Talla {inv.variant.size} • {inv.store.name}
-                              </div>
+                              <span className="font-medium text-white">{inv.variant.product.brand} {inv.variant.product.name}</span>
+                              <div className="text-[10px] text-[#9CA3AF]">{inv.variant.color ? `${inv.variant.color} • ` : ""}Talla {inv.variant.size} • {inv.store.name}</div>
                             </div>
                             <span className="text-yellow-400 font-mono whitespace-nowrap">{inv.quantity} uds</span>
                           </li>

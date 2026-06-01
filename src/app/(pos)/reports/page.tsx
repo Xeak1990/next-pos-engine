@@ -4,57 +4,70 @@ import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
-import { getMexicoDate, formatMexicoDate } from "../../../lib/date";
 
 export const revalidate = 3600;
 
 type DateRangeKey = "today" | "week" | "month" | "last60";
 
-// Convierte una fecha (en horario México) a los límites UTC del día correspondiente
-function getUTCRangeForMexicoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
-  const startUTC = new Date(Date.UTC(year, month, day, 0, 0, 0));
-  const endUTC = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+// --------------------------------------------------------------
+// Zona horaria México (UTC-6)
+// --------------------------------------------------------------
+function getMexicoOffsetForUTCDate(utcDate: Date): number {
+  const formatter = new Intl.DateTimeFormat("en", {
+    timeZone: "America/Mexico_City",
+    hour: "2-digit",
+    hour12: false,
+  });
+  const hourInMexico = parseInt(formatter.format(utcDate), 10);
+  const utcHour = utcDate.getUTCHours();
+  return hourInMexico - utcHour; // normalmente -6
+}
+
+function getUTCRangeForMexicoDate(mexicoDate: Date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [year, month, day] = formatter.format(mexicoDate).split("-").map(Number);
+  const noonUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const offsetHours = getMexicoOffsetForUTCDate(noonUTC);
+  const startUTC = new Date(Date.UTC(year, month - 1, day, -offsetHours, 0, 0));
+  const endUTC = new Date(Date.UTC(year, month - 1, day, -offsetHours + 24, 0, 0));
+  endUTC.setUTCMilliseconds(-1);
   return { startUTC, endUTC };
 }
 
-// Calcula los rangos de fechas en horario México y devuelve límites UTC
 function getDateRangeUTC(option: DateRangeKey) {
-  const nowMexico = getMexicoDate();
-  let startMexico: Date;
-  const endMexico = new Date(nowMexico);
-  endMexico.setHours(23, 59, 59, 999);
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [currentYear, currentMonth, currentDay] = formatter.format(now).split("-").map(Number);
+  let startMexico = new Date(currentYear, currentMonth - 1, currentDay);
+  const endMexico = new Date(currentYear, currentMonth - 1, currentDay);
 
-  if (option === "today") {
-    startMexico = new Date(nowMexico);
-    startMexico.setHours(0, 0, 0, 0);
-  } else if (option === "week") {
-    startMexico = new Date(nowMexico);
-    startMexico.setDate(nowMexico.getDate() - 6);
-    startMexico.setHours(0, 0, 0, 0);
-  } else if (option === "month") {
-    startMexico = new Date(nowMexico.getFullYear(), nowMexico.getMonth(), 1);
-    startMexico.setHours(0, 0, 0, 0);
-  } else { // last60
-    startMexico = new Date(nowMexico);
-    startMexico.setDate(nowMexico.getDate() - 59);
-    startMexico.setHours(0, 0, 0, 0);
-  }
+  if (option === "week") startMexico.setDate(currentDay - 6);
+  else if (option === "month") startMexico = new Date(currentYear, currentMonth - 1, 1);
+  else if (option === "last60") startMexico.setDate(currentDay - 59);
 
-  const { startUTC: start } = getUTCRangeForMexicoDate(startMexico);
-  const { endUTC: end } = getUTCRangeForMexicoDate(endMexico);
-  return { startUTC: start, endUTC: end };
+  const { startUTC } = getUTCRangeForMexicoDate(startMexico);
+  const { endUTC } = getUTCRangeForMexicoDate(endMexico);
+  return { startUTC, endUTC };
 }
 
-// Convierte una fecha (almacenada en UTC) a string YYYY-MM-DD en horario México
-function formatQueryDateMexico(date: Date) {
-  const mexicoDate = getMexicoDate(date);
-  const year = mexicoDate.getFullYear();
-  const month = String(mexicoDate.getMonth() + 1).padStart(2, "0");
-  const day = String(mexicoDate.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function formatQueryDateMexico(date: Date): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
 }
 
 const rangeOptions: Array<{ key: DateRangeKey; label: string }> = [
@@ -72,7 +85,6 @@ export default async function ReportsPage({
   const { range = "last60" } = await searchParams;
   const selectedRange = range as DateRangeKey;
 
-  // Autenticación
   const cookieStore = await cookies();
   const token = cookieStore.get("bt_auth")?.value;
   const authPayload = token ? await verifyAuthToken(token) : null;
@@ -83,7 +95,7 @@ export default async function ReportsPage({
   const { startUTC, endUTC } = getDateRangeUTC(selectedRange);
   const dateFilter = { createdAt: { gte: startUTC, lte: endUTC } };
 
-  // 1. Totales (aggregate)
+  // 1. Totales
   const totalAgg = await prisma.sale.aggregate({
     where: dateFilter,
     _sum: { total: true },
@@ -93,7 +105,7 @@ export default async function ReportsPage({
   const totalTransactions = totalAgg._count;
   const averageTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
-  // 2. Ventas por sucursal (groupBy)
+  // 2. Ventas por sucursal
   const salesByStoreRaw = await prisma.sale.groupBy({
     by: ["storeId"],
     where: dateFilter,
@@ -112,7 +124,7 @@ export default async function ReportsPage({
     transactions: s._count,
   }));
 
-  // 3. Top productos (optimizado: groupBy sobre saleItem, limitado a 5)
+  // 3. Top productos
   const topVariants = await prisma.saleItem.groupBy({
     by: ["variantId"],
     where: { sale: dateFilter },
@@ -120,25 +132,19 @@ export default async function ReportsPage({
     orderBy: { _sum: { quantity: "desc" } },
     take: 5,
   });
-
   const topSellers: { modelName: string; size: string; quantity: number; total: number }[] = [];
   if (topVariants.length > 0) {
     const variantIds = topVariants.map(v => v.variantId);
     const variantsWithProducts = await prisma.variant.findMany({
       where: { id: { in: variantIds } },
-      select: {
-        id: true,
-        size: true,
-        price: true,
-        product: { select: { name: true } },
-      },
+      select: { id: true, size: true, price: true, product: { select: { name: true } } },
     });
     const variantMap = new Map(variantsWithProducts.map(v => [v.id, v]));
     for (const item of topVariants) {
       const variant = variantMap.get(item.variantId);
       if (variant) {
         const qty = item._sum.quantity || 0;
-        const total = Number(variant.price) * qty; // precio base * cantidad (sin descuentos)
+        const total = Number(variant.price) * qty;
         topSellers.push({
           modelName: variant.product.name,
           size: variant.size,
@@ -149,25 +155,28 @@ export default async function ReportsPage({
     }
   }
 
-  // 4. Tendencia diaria (solo totales por día, usando findMany limitado al rango de fechas)
+  // 4. Tendencia diaria (corregida)
   const allSales = await prisma.sale.findMany({
     where: dateFilter,
     select: { total: true, createdAt: true },
   });
+
   const trendMap = new Map<string, number>();
   for (const sale of allSales) {
     const dateKey = formatQueryDateMexico(sale.createdAt);
     trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + Number(sale.total));
   }
 
-  // Generar todos los días del rango (en México)
-  const salesTrend = [];
-  const currentDate = new Date(startUTC);
-  const endDate = new Date(endUTC);
-  while (currentDate <= endDate) {
-    const key = formatQueryDateMexico(currentDate);
+  // Generar la lista de días en México (desde startUTC hasta endUTC, inclusive)
+  const salesTrend: { date: string; total: number }[] = [];
+  const currentMexico = new Date(startUTC);
+  const endMexico = new Date(endUTC);
+  // Avanzamos en el tiempo UTC pero tomamos la fecha en México cada vez
+  while (currentMexico <= endMexico) {
+    const key = formatQueryDateMexico(currentMexico);
     salesTrend.push({ date: key, total: trendMap.get(key) || 0 });
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    // Sumar 24 horas en UTC para pasar al siguiente día
+    currentMexico.setUTCDate(currentMexico.getUTCDate() + 1);
   }
 
   const filteredSalesTrend = salesTrend.filter(point => point.total > 0);
@@ -176,7 +185,7 @@ export default async function ReportsPage({
     : 1;
 
   const hasSales = totalTransactions > 0;
-  const nowMexico = getMexicoDate();
+  const nowMexico = new Date();
 
   return (
     <div className="flex-1 min-h-screen max-w-full bg-[#060606] px-6 py-8 text-white overflow-hidden m-[5px]">
@@ -187,29 +196,26 @@ export default async function ReportsPage({
             <span>/</span>
             <span className="text-[#e8621a]">Reportes</span>
           </nav>
-          <h1
-            className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
-            style={{
-              fontFamily: "Arial, sans-serif",
-              transform: "scale(0.85, 1.15)",
-              transformOrigin: "left center",
-              WebkitTextStroke: "1.5px white",
-            }}
-          >
+          <h1 className="text-[38px] font-[900] uppercase text-white leading-none tracking-tight"
+            style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.85, 1.15)", transformOrigin: "left center", WebkitTextStroke: "1.5px white" }}>
             Reportes
           </h1>
           <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
-            {formatMexicoDate(nowMexico)}
+            {new Intl.DateTimeFormat("es-MX", {
+              timeZone: "America/Mexico_City",
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(nowMexico).toLowerCase()}
           </p>
         </div>
-        <div className="flex items-center gap-[5px] mt-1">
-          {/* Botones adicionales si se requieren */}
-        </div>
+        <div className="flex items-center gap-[5px] mt-1">{/* botones extra */}</div>
       </div>
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-[5px] mt-4 mb-[5px] ml-[5px]">
-        {rangeOptions.map((option) => (
+        {rangeOptions.map(option => (
           <Link
             key={option.key}
             href={`/reports?range=${option.key}`}
@@ -225,7 +231,6 @@ export default async function ReportsPage({
 
       {/* Tarjetas KPI */}
       <section className="grid grid-cols-3 gap-[7px] mb-[5px]">
-        {/* Total Ventas */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Total Ventas</p>
@@ -240,7 +245,6 @@ export default async function ReportsPage({
           </div>
         </article>
 
-        {/* Transacciones */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Transacciones</p>
@@ -255,7 +259,6 @@ export default async function ReportsPage({
           </div>
         </article>
 
-        {/* Ticket Promedio */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", minHeight: "unset", padding: "0", borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans leading-tight">Ticket Promedio</p>
@@ -308,7 +311,6 @@ export default async function ReportsPage({
 
       {/* Tendencia y Top productos */}
       <section className="grid grid-cols-2 gap-[6px] mb-[5px]">
-        {/* Tendencia diaria */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4" style={{ borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
@@ -323,25 +325,17 @@ export default async function ReportsPage({
                       <span className="font-mono text-[11px] text-white">{formatCurrency(point.total)}</span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-[#1F1F1F]">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#E8621A] to-[#F59E0B]"
-                        style={{
-                          width: `${Math.round((point.total / maxDailySales) * 100)}%`,
-                        }}
-                      />
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#E8621A] to-[#F59E0B]" style={{ width: `${Math.round((point.total / maxDailySales) * 100)}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-[#9CA3AF]">
-                No hay ventas en este período
-              </div>
+              <div className="text-center py-8 text-[#9CA3AF]">No hay ventas en este período</div>
             )}
           </div>
         </article>
 
-        {/* Top productos */}
         <article className="bt-panel !rounded-[12px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] pt-4 pb-4" style={{ borderRadius: "12px !important" }}>
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <h2 className="mb-4 text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>

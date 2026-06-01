@@ -9,10 +9,17 @@ export default async function TerminalPage() {
     redirect("/login");
   }
 
+  console.log("[TerminalPage] Datos del usuario:", {
+    storeName: auth.storeName,
+    storeLocation: auth.storeLocation,
+    storeId: auth.storeId,
+  });
+
   return (
     <PosPage
       initialStoreLocation={auth.storeLocation ?? null}
       initialStoreName={auth.storeName ?? null}
+      storeId={auth.storeId ?? null}
     />
   );
 }
