@@ -121,7 +121,6 @@ export default function CatalogClient({
     .toLowerCase();
 
   return (
-    // Contenedor principal: ocupa al menos toda la pantalla, scroll del navegador
     <div className="min-h-screen w-full flex flex-col px-6 py-8 text-white">
       {/* Cabecera fija */}
       <div className="flex w-full items-start justify-between mb-[15px] shrink-0">
@@ -181,41 +180,54 @@ export default function CatalogClient({
             {dropdownOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                <div className="absolute right-0 mt-2 w-48 rounded-md border border-[#333] bg-[#1A1A1A] py-1 shadow-lg z-50">
+                {/* ========== LÍNEA PARA MODIFICAR EL ANCHO DEL MENÚ ========== */}
+                {/* Cambia "w-40" por el ancho que quieras (ej: w-36, w-44, w-32) */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 rounded-[12px] border border-[#333] bg-[#1A1A1A] shadow-xl z-50 overflow-hidden"
+                  style={{ fontFamily: "Arial, sans-serif" }}
+                >
                   {customer ? (
                     <>
-                      <div className="px-4 py-2 text-sm text-white border-b border-[#333]">
-                        Hola, {customer.name?.split(" ")[0] || "Usuario"}
+                      <div className="px-3 py-2 text-sm text-white border-b border-[#333] bg-[#111111]">
+                        <p className="font-semibold">Hola, {customer.name?.split(" ")[0] || "Usuario"}</p>
                       </div>
                       <Link
                         href="/account"
-                        className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                        className="block px-3 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
                         onClick={() => setDropdownOpen(false)}
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       >
                         Mi cuenta
                       </Link>
                       <Link
                         href="/orders/history"
-                        className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                        className="block px-3 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
                         onClick={() => setDropdownOpen(false)}
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       >
                         Mis pedidos
                       </Link>
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setDropdownOpen(false);
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
-                      >
-                        Cerrar sesión
-                      </button>
+                      <div className="px-2 pb-2">
+                        {/* ========== LÍNEA PARA MODIFICAR EL TAMAÑO DEL TEXTO DEL BOTÓN ========== */}
+                        {/* Cambia "text-xs" por "text-sm", "text-[10px]", etc. */}
+                        <button
+                          onClick={() => {
+                            handleLogout();
+                            setDropdownOpen(false);
+                          }}
+                          className="bt-button-ghost w-full justify-center text-[12px] tracking-wider font-semibold"
+                          style={{ fontFamily: "Arial, sans-serif", padding: "0.5rem 0" }}
+                        >
+                          Cerrar sesión
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <Link
                       href="/login"
-                      className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                      className="block px-3 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors text-center"
                       onClick={() => setDropdownOpen(false)}
+                      style={{ fontFamily: "Arial, sans-serif" }}
                     >
                       Iniciar sesión
                     </Link>
@@ -228,29 +240,17 @@ export default function CatalogClient({
         </div>
       </div>
 
-      {/* Fila principal: items-start para que el filtro no se estire */}
+      {/* Fila principal: filtros + productos (sin cambios) */}
       <div className="flex-1 flex flex-row gap-[15px] items-start">
-        {/* Panel de filtros: altura fija de 500px, no se estira */}
         <aside className="w-[200px] shrink-0">
           <article className="bt-panel !rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] p-3 h-[500px] overflow-y-auto">
             <div className="w-[80%] mx-auto pt-[10px] pb-[25px] flex flex-col h-full">
-              <h2
-                className="text-[15px] font-[900] uppercase text-white tracking-tight mb-[25px]"
-                style={{
-                  fontFamily: "Arial, sans-serif",
-                  transform: "scale(0.9, 1.1)",
-                  transformOrigin: "left center",
-                  textShadow: "0 0 1px rgba(255,255,255,0.3)",
-                }}
-              >
+              <h2 className="text-[15px] font-[900] uppercase text-white tracking-tight mb-[25px]" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>
                 Filtros
               </h2>
-
               {/* Sucursal */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
-                  Sucursal
-                </label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Sucursal</label>
                 <select
                   value={filters.store}
                   onChange={(e) => setFilters({ ...filters, store: e.target.value })}
@@ -259,18 +259,13 @@ export default function CatalogClient({
                 >
                   <option value="">Todas</option>
                   {filterOptions.stores.map((store) => (
-                    <option key={store} value={store}>
-                      {store}
-                    </option>
+                    <option key={store} value={store}>{store}</option>
                   ))}
                 </select>
               </div>
-
               {/* Categoría */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
-                  Categoría
-                </label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Categoría</label>
                 <select
                   value={filters.category}
                   onChange={(e) => setFilters({ ...filters, category: e.target.value })}
@@ -279,25 +274,18 @@ export default function CatalogClient({
                 >
                   <option value="">Todas</option>
                   {filterOptions.categories.map((cat, idx) => (
-                    <option key={`cat-${idx}`} value={cat}>
-                      {cat}
-                    </option>
+                    <option key={`cat-${idx}`} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
-
               {/* Talla */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
-                  Talla
-                </label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Talla</label>
                 <div className="flex flex-wrap gap-[5px]" style={{ marginBottom: "25px" }}>
                   {filterOptions.sizes.map((size) => (
                     <button
                       key={size}
-                      onClick={() =>
-                        setFilters({ ...filters, size: filters.size === size ? "" : size })
-                      }
+                      onClick={() => setFilters({ ...filters, size: filters.size === size ? "" : size })}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-[14px] transition-all ${
                         filters.size === size
                           ? "bg-[#E8621A] text-white border border-[#E8621A]"
@@ -310,12 +298,9 @@ export default function CatalogClient({
                   ))}
                 </div>
               </div>
-
               {/* Precio */}
               <div>
-                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">
-                  Precio
-                </label>
+                <label className="block text-[12px] uppercase font-[900] text-[#9CA3AF] font-sans mb-[10px]">Precio</label>
                 <select
                   value={filters.priceRangeIndex}
                   onChange={(e) => setFilters({ ...filters, priceRangeIndex: Number(e.target.value) })}
@@ -323,24 +308,14 @@ export default function CatalogClient({
                   style={{ height: "40px", paddingLeft: "8px", paddingRight: "8px", marginBottom: "25px" }}
                 >
                   {priceRanges.map((range, idx) => (
-                    <option key={idx} value={idx}>
-                      {range.label}
-                    </option>
+                    <option key={idx} value={idx}>{range.label}</option>
                   ))}
                 </select>
               </div>
-
-              {/* Botón limpiar: sigue anclado al fondo del panel de 500px */}
               <button
                 onClick={handleClearFilters}
                 className="bt-button-ghost w-full font-[900] justify-center rounded-[8px] mt-auto text-[10px]"
-                style={{
-                  height: "24px",
-                  fontFamily: "Arial, sans-serif",
-                  fontWeight: 900,
-                  padding: "0 0.5rem",
-                  letterSpacing: "0.1em",
-                }}
+                style={{ height: "24px", fontFamily: "Arial, sans-serif", fontWeight: 900, padding: "0 0.5rem", letterSpacing: "0.1em" }}
               >
                 Limpiar filtros
               </button>
@@ -348,14 +323,12 @@ export default function CatalogClient({
           </article>
         </aside>
 
-        {/* Área de productos: ocupa el resto del ancho, altura determinada por su contenido */}
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="grid grid-cols-4 gap-[15px] auto-rows-min">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-[#9CA3AF] font-sans text-sm">
               No hay productos con los filtros seleccionados.

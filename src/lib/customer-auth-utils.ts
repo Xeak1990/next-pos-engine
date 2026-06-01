@@ -1,37 +1,60 @@
-import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
-import { prisma } from './prisma';
+// src/lib/customer-auth-utils.ts
+import { SignJWT, jwtVerify } from "jose";
+import { cookies } from "next/headers";
+import { prisma } from "./prisma";
+import { getCustomerSecret } from "./secret";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const CUSTOMER_TOKEN_NAME = 'bt_customer_token';
+// ============================================================
+// Interfaces
+// ============================================================
+export type CustomerPayload = {
+  id: string;
+  email: string;
+  role: "customer";
+};
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+// ============================================================
+// Firmar token para clientes
+// ============================================================
+export async function generateCustomerToken(customerId: string, email: string): Promise<string> {
+  const payload: CustomerPayload = {
+    id: customerId,
+    email,
+    role: "customer",
+  };
+  const secret = getCustomerSecret();
+  const token = await new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(secret);
+  return token;
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
-
-export function generateCustomerToken(customerId: string, email: string): string {
-  return jwt.sign({ id: customerId, email, role: 'customer' }, JWT_SECRET, { expiresIn: '7d' });
-}
-
-export function verifyCustomerToken(token: string): { id: string; email: string; role: string } | null {
+// ============================================================
+// Verificar token para clientes
+// ============================================================
+export async function verifyCustomerToken(token: string): Promise<CustomerPayload | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
+    const secret = getCustomerSecret();
+    const { payload } = await jwtVerify<CustomerPayload>(token, secret);
+    return payload;
   } catch {
     return null;
   }
 }
 
+// ============================================================
+// Obtener cliente completo desde la cookie (para API routes)
+// ============================================================
 export async function getCustomerFromCookies() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(CUSTOMER_TOKEN_NAME)?.value;
+  const token = cookieStore.get("bt_customer_token")?.value;
   if (!token) return null;
-  const payload = verifyCustomerToken(token);
+  const payload = await verifyCustomerToken(token);
   if (!payload) return null;
-  const customer = await prisma.customer.findUnique({ where: { id: payload.id } });
+  const customer = await prisma.customer.findUnique({
+    where: { id: payload.id },
+  });
   return customer;
 }

@@ -63,9 +63,16 @@ function ProductModal({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function InventoryTable({ initialData }: { initialData: InventoryItem[] }) {
+export default function InventoryTable({
+  initialData,
+}: {
+  initialData: InventoryItem[];
+}) {
   const [inventory, setInventory] = useState(initialData);
-  const [user, setUser] = useState<{ role: string; storeId: string | null } | null>(null);
+  const [user, setUser] = useState<{
+    role: string;
+    storeId: string | null;
+  } | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
@@ -85,11 +92,11 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [modalWidth, setModalWidth] = useState(700);
-  const [modalHeight, setModalHeight] = useState(600);
-
   const stores = useMemo(() => {
-    const storeMap = new Map<string, { id: string; name: string; location: string }>();
+    const storeMap = new Map<
+      string,
+      { id: string; name: string; location: string }
+    >();
     for (const item of inventory) {
       if (!storeMap.has(item.storeId)) {
         storeMap.set(item.storeId, {
@@ -102,7 +109,6 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     return Array.from(storeMap.values());
   }, [inventory]);
 
-  // Efecto para cargar el usuario
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -127,9 +133,8 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       }
     };
     fetchUser();
-  }, [stores, selectedStoreId]); // ← agregada la dependencia faltante
+  }, [stores, selectedStoreId]);
 
-  // Efecto para cargar categorías (sin función externa)
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -142,7 +147,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       }
     };
     loadCategories();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const canModifyStock = user?.role === "ADMIN";
   const canAddProduct = user?.role === "ADMIN" || user?.role === "MANAGER";
@@ -158,7 +163,9 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
     const previousInventory = inventory;
     setInventory((current) =>
       current.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(0, item.quantity + amount) } : item
+        item.id === id
+          ? { ...item, quantity: Math.max(0, item.quantity + amount) }
+          : item
       )
     );
     startTransition(async () => {
@@ -237,13 +244,11 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
         setErrorMessage(data.error || "Error al crear categoría");
         return;
       }
-      // Recargar categorías
       const catRes = await fetch("/api/categories");
       const newCategories = await catRes.json();
       setCategories(newCategories);
       setIsCategoryModalOpen(false);
       setNewCategoryName("");
-      // Seleccionar automáticamente la nueva categoría
       if (data.id) {
         setNewProduct((prev) => ({ ...prev, categoryId: data.id }));
       }
@@ -269,7 +274,9 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       <div className="flex w-full items-start justify-between mb-[15px]">
         <div className="flex flex-col">
           <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
-            <span className="hover:text-white transition-colors duration-200 cursor-default">Operaciones</span>
+            <span className="hover:text-white transition-colors duration-200 cursor-default">
+              Operaciones
+            </span>
             <span>/</span>
             <span className="text-[#e8621a]">Inventario</span>
           </nav>
@@ -285,14 +292,22 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
           >
             Inventario
           </h1>
-          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] opacity-80">Stock por sucursal</p>
-          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">{formattedDate}</p>
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] opacity-80">
+            Stock por sucursal
+          </p>
+          <p className="mt-[-8px] text-[16px] font-medium text-[#9CA3AF] lowercase opacity-80">
+            {formattedDate}
+          </p>
         </div>
         {canAddProduct && (
           <button
             onClick={() => setIsProductModalOpen(true)}
             className="bt-button-primary px-6 py-2 text-xs whitespace-nowrap"
-            style={{ fontFamily: "Arial, sans-serif", padding: "7px 12px !important", minHeight: "auto !important" }}
+            style={{
+              fontFamily: "Arial, sans-serif",
+              padding: "7px 12px !important",
+              minHeight: "auto !important",
+            }}
           >
             + Nuevo Producto
           </button>
@@ -305,7 +320,8 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
           {stores.map((store) => {
             const isActive = selectedStoreId === store.id;
             let disabled = false;
-            if (!canChangeBranch && user?.storeId) disabled = store.id !== user.storeId;
+            if (!canChangeBranch && user?.storeId)
+              disabled = store.id !== user.storeId;
             return (
               <button
                 key={store.id}
@@ -329,12 +345,20 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
       {/* Paneles informativos */}
       <div className="flex flex-wrap gap-[10px] mb-[10px]">
         <div className="bt-panel-blue rounded-[12px] px-5 py-4 flex-1 min-w-[180px]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#C9D8EA] font-semibold">Variantes activas</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white">{inventory.length}</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-[#C9D8EA] font-semibold">
+            Variantes activas
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold text-white">
+            {inventory.length}
+          </p>
         </div>
         <div className="rounded-[14px] border border-[#333333] bg-[#111111] px-5 py-4 flex-1 min-w-[180px]">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8] font-semibold">Registros visibles</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-white">{visibleInventory.length}</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8] font-semibold">
+            Registros visibles
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold text-white">
+            {visibleInventory.length}
+          </p>
         </div>
       </div>
 
@@ -351,22 +375,39 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
               </colgroup>
               <thead className="bg-[#1A1A1A]">
                 <tr>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">Producto</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">Talla</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">Stock</th>
-                  <th className="text-right text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">Acciones</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Producto
+                  </th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Talla
+                  </th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Stock
+                  </th>
+                  <th className="text-right text-[11px] font-bold uppercase tracking-[0.22em] text-[#9CA3AF]">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visibleInventory.map((item) => (
-                  <tr key={item.id} className="border-t border-[#222222] hover:bg-[#1A1A1A]/40 transition-colors">
+                  <tr
+                    key={item.id}
+                    className="border-t border-[#222222] hover:bg-[#1A1A1A]/40 transition-colors"
+                  >
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-semibold text-white font-sans">{item.variant.product.name}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-[#94A3B8]">{item.variant.color}</p>
+                        <p className="font-semibold text-white font-sans">
+                          {item.variant.product.name}
+                        </p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-[#94A3B8]">
+                          {item.variant.color}
+                        </p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-white">{item.variant.size}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-white">
+                      {item.variant.size}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className="inline-block !rounded-[12px] px-3 py-1 font-mono text-xs font-semibold bg-[#2ECC71]/15 text-[#2ECC71]"
@@ -380,7 +421,8 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                           letterSpacing: "0.2em",
                           color: "#2ECC71",
                           lineHeight: "1",
-                          boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
+                          boxShadow:
+                            "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)",
                         }}
                       >
                         {item.quantity} uds
@@ -393,8 +435,12 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                             <button
                               type="button"
                               onClick={() => handleAdjust(item.id, -1)}
-                              className="inline-flex items-center justify-center w-[30px] h-[30px] text-xs font-semibold rounded-[5px] border-none bg-[#2A2A2A] text-white hover:bg-[#3A3A3A]"
-                              style={{ color: "#FFFFFF", fontFamily: "Arial, sans-serif" }}
+                              disabled={item.quantity === 0}
+                              className="inline-flex items-center justify-center w-[30px] h-[30px] text-xs font-semibold rounded-[5px] border-none bg-[#2A2A2A] text-white hover:bg-[#3A3A3A] disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{
+                                color: "#FFFFFF",
+                                fontFamily: "Arial, sans-serif",
+                              }}
                             >
                               -1
                             </button>
@@ -402,13 +448,18 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                               type="button"
                               onClick={() => handleAdjust(item.id, 1)}
                               className="inline-flex items-center justify-center w-[30px] h-[30px] text-xs font-bold uppercase tracking-[0.12em] rounded-[5px] border-none bg-[#E8621A] text-white hover:bg-[#f07330] transition-colors"
-                              style={{ color: "#FFFFFF", fontFamily: "Arial, sans-serif" }}
+                              style={{
+                                color: "#FFFFFF",
+                                fontFamily: "Arial, sans-serif",
+                              }}
                             >
                               +1
                             </button>
                           </>
                         ) : (
-                          <span className="px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#6B7280] font-medium">Solo consulta</span>
+                          <span className="px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-[#6B7280] font-medium">
+                            Solo consulta
+                          </span>
                         )}
                       </div>
                     </td>
@@ -416,7 +467,10 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                 ))}
                 {visibleInventory.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-14 text-center text-sm text-[#9CA3AF] font-sans">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-14 text-center text-sm text-[#9CA3AF] font-sans"
+                    >
                       No hay existencias para la sucursal seleccionada.
                     </td>
                   </tr>
@@ -438,57 +492,40 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
           <div
             role="dialog"
             aria-modal="true"
-            className="custom-scrollbar overflow-y-auto rounded-[24px] bg-[#1A1A1A] shadow-xl border border-gray-600"
-            style={{ width: `${modalWidth}px`, maxWidth: "90vw", height: `${modalHeight}px`, maxHeight: "90vh" }}
+            className="w-full max-w-[650px] overflow-y-auto rounded-[24px] bg-[#1A1A1A] shadow-xl border border-gray-600"
+            style={{ maxHeight: "90vh" }}
           >
             <div className="w-[88%] mx-auto py-6 space-y-[10px]">
-              {/* Cabecera con controles de tamaño */}
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <p
+                    className="text-xs uppercase tracking-[0.28em] text-[#94A3B8]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     Nuevo producto
                   </p>
-                  <h2 className="mt-1 text-4xl text-white" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <h2
+                    className="mt-1 text-4xl text-white"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     Crear Variante
                   </h2>
-                  <p className="mt-1 text-sm text-[#9CA3AF]" style={{ fontFamily: "Arial, sans-serif" }}>
+                  <p
+                    className="mt-1 text-sm text-[#9CA3AF]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     Completa los datos para agregar una nueva variante de producto.
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:flex items-center gap-2 bg-black/40 rounded-full px-3 py-1">
-                    <span className="text-[10px] text-gray-400">Ancho:</span>
-                    <input
-                      type="range"
-                      min="500"
-                      max="1200"
-                      step="10"
-                      value={modalWidth}
-                      onChange={(e) => setModalWidth(Number(e.target.value))}
-                      className="w-24 h-1 accent-[#E8621A]"
-                    />
-                    <span className="text-xs text-white">{modalWidth}px</span>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2 bg-black/40 rounded-full px-3 py-1">
-                    <span className="text-[10px] text-gray-400">Alto:</span>
-                    <input
-                      type="range"
-                      min="500"
-                      max="800"
-                      step="10"
-                      value={modalHeight}
-                      onChange={(e) => setModalHeight(Number(e.target.value))}
-                      className="w-24 h-1 accent-[#E8621A]"
-                    />
-                    <span className="text-xs text-white">{modalHeight}px</span>
-                  </div>
-                  <button onClick={() => setIsProductModalOpen(false)} className="bt-button-ghost px-4 py-2 text-xs">
-                    Cerrar
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="bt-button-ghost px-4 py-2 text-xs"
+                  style={{ fontFamily: "Arial, sans-serif" }}
+                >
+                  Cerrar
+                </button>
               </div>
 
-              {/* Formulario */}
               <form className="space-y-[10px]" onSubmit={handleCreateProduct}>
                 {errorMessage && (
                   <div className="rounded-[12px] border border-[#E8621A]/30 bg-[#E8621A]/10 px-4 py-3 text-sm text-[#FED7AA]">
@@ -497,44 +534,66 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                 )}
 
                 <div className="grid gap-[10px] md:grid-cols-2">
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Nombre del producto</span>
                     <input
                       type="text"
                       value={newProduct.name}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, name: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Marca</span>
                     <input
                       type="text"
                       value={newProduct.brand}
-                      onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, brand: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
                 </div>
 
                 <div className="grid gap-[10px] md:grid-cols-2">
-                  <div className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <div
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <div className="flex justify-between items-center">
                       <span>Categoría</span>
                       <button
                         type="button"
                         onClick={() => setIsCategoryModalOpen(true)}
-                        className="text-xs text-[#E8621A] hover:underline"
+                        className="bt-button-primary text-xs px-3 py-1 rounded-md"
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       >
                         + Nueva
                       </button>
                     </div>
                     <select
                       value={newProduct.categoryId}
-                      onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          categoryId: e.target.value,
+                        })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     >
                       <option value="">Selecciona una categoría</option>
@@ -545,72 +604,106 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                       ))}
                     </select>
                   </div>
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Color</span>
                     <input
                       type="text"
                       value={newProduct.color}
-                      onChange={(e) => setNewProduct({ ...newProduct, color: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, color: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
                 </div>
 
                 <div className="grid gap-[10px] md:grid-cols-2">
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Talla</span>
                     <input
                       type="text"
                       value={newProduct.size}
-                      onChange={(e) => setNewProduct({ ...newProduct, size: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, size: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Precio ($)</span>
                     <input
                       type="number"
                       step="0.01"
                       value={newProduct.price}
-                      onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, price: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
                 </div>
 
                 <div className="grid gap-[10px] md:grid-cols-2">
-                  <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                  <label
+                    className="space-y-[5px] text-sm text-[#D1D5DB]"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                  >
                     <span>Stock inicial</span>
                     <input
                       type="number"
                       min="0"
                       value={newProduct.stock}
-                      onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                      onChange={(e) =>
+                        setNewProduct({ ...newProduct, stock: e.target.value })
+                      }
                       className="bt-input w-full px-4 py-3"
+                      style={{ fontFamily: "Arial, sans-serif" }}
                       required
                     />
                   </label>
                   {!canChangeBranch && user?.storeId && (
-                    <div className="space-y-[5px] text-sm text-[#D1D5DB]">
+                    <div
+                      className="space-y-[5px] text-sm text-[#D1D5DB]"
+                      style={{ fontFamily: "Arial, sans-serif" }}
+                    >
                       <span>Sucursal</span>
                       <input
                         type="text"
-                        value={stores.find((s) => s.id === user.storeId)?.name || ""}
+                        value={
+                          stores.find((s) => s.id === user.storeId)?.name || ""
+                        }
                         disabled
                         className="bt-input w-full px-4 py-3 opacity-70 cursor-not-allowed"
+                        style={{ fontFamily: "Arial, sans-serif" }}
                       />
                     </div>
                   )}
                   {canChangeBranch && (
-                    <label className="space-y-[5px] text-sm text-[#D1D5DB]">
+                    <label
+                      className="space-y-[5px] text-sm text-[#D1D5DB]"
+                      style={{ fontFamily: "Arial, sans-serif" }}
+                    >
                       <span>Sucursal</span>
                       <select
                         value={selectedStoreId}
                         onChange={(e) => setSelectedStoreId(e.target.value)}
                         className="bt-input w-full px-4 py-3"
+                        style={{ fontFamily: "Arial, sans-serif" }}
                         required
                       >
                         {stores.map((store) => (
@@ -628,6 +721,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                     type="button"
                     onClick={() => setIsProductModalOpen(false)}
                     className="bt-button-ghost px-6 py-3 text-xs"
+                    style={{ fontFamily: "Arial, sans-serif" }}
                   >
                     Cancelar
                   </button>
@@ -635,6 +729,7 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
                     type="submit"
                     disabled={isSubmitting}
                     className="bt-button-primary px-6 py-3 text-xs disabled:opacity-60"
+                    style={{ fontFamily: "Arial, sans-serif" }}
                   >
                     {isSubmitting ? "Guardando..." : "Crear Producto"}
                   </button>
@@ -650,20 +745,31 @@ export default function InventoryTable({ initialData }: { initialData: Inventory
         <ProductModal>
           <div className="bg-[#1A1A1A] rounded-[24px] shadow-xl border border-gray-600 w-[400px] max-w-[90vw] p-6">
             <h3 className="text-xl text-white mb-2">Nueva Categoría</h3>
-            <p className="text-sm text-[#9CA3AF] mb-4">Ingresa el nombre de la nueva categoría</p>
+            <p className="text-sm text-[#9CA3AF] mb-4">
+              Ingresa el nombre de la nueva categoría
+            </p>
             <input
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="bt-input w-full px-4 py-3 mb-4"
+              style={{ fontFamily: "Arial, sans-serif" }}
               placeholder="Ej: Deportivo"
               autoFocus
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setIsCategoryModalOpen(false)} className="bt-button-ghost px-4 py-2 text-xs">
+              <button
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="bt-button-ghost px-4 py-2 text-xs"
+                style={{ fontFamily: "Arial, sans-serif" }}
+              >
                 Cancelar
               </button>
-              <button onClick={handleCreateCategory} className="bt-button-primary px-4 py-2 text-xs">
+              <button
+                onClick={handleCreateCategory}
+                className="bt-button-primary px-4 py-2 text-xs"
+                style={{ fontFamily: "Arial, sans-serif" }}
+              >
                 Crear Categoría
               </button>
             </div>

@@ -6,6 +6,8 @@ import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
 import { getMexicoDate, formatMexicoDate } from "../../../lib/date";
 
+export const revalidate = 3600;
+
 type DateRangeKey = "today" | "week" | "month" | "last60";
 
 // Convierte una fecha (en horario México) a los límites UTC del día correspondiente
@@ -20,7 +22,7 @@ function getUTCRangeForMexicoDate(date: Date) {
 
 // Calcula los rangos de fechas en horario México y devuelve límites UTC
 function getDateRangeUTC(option: DateRangeKey) {
-  const nowMexico = getMexicoDate(); // fecha actual en México
+  const nowMexico = getMexicoDate();
   let startMexico: Date;
   const endMexico = new Date(nowMexico);
   endMexico.setHours(23, 59, 59, 999);
@@ -81,7 +83,7 @@ export default async function ReportsPage({
   const { startUTC, endUTC } = getDateRangeUTC(selectedRange);
   const dateFilter = { createdAt: { gte: startUTC, lte: endUTC } };
 
-  // Totales
+  // 1. Totales (aggregate)
   const totalAgg = await prisma.sale.aggregate({
     where: dateFilter,
     _sum: { total: true },
@@ -91,7 +93,7 @@ export default async function ReportsPage({
   const totalTransactions = totalAgg._count;
   const averageTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
-  // Ventas por sucursal
+  // 2. Ventas por sucursal (groupBy)
   const salesByStoreRaw = await prisma.sale.groupBy({
     by: ["storeId"],
     where: dateFilter,
@@ -110,43 +112,44 @@ export default async function ReportsPage({
     transactions: s._count,
   }));
 
-  // Top productos
-  const saleItems = await prisma.saleItem.findMany({
+  // 3. Top productos (optimizado: groupBy sobre saleItem, limitado a 5)
+  const topVariants = await prisma.saleItem.groupBy({
+    by: ["variantId"],
     where: { sale: dateFilter },
-    select: {
-      quantity: true,
-      salePrice: true,
-      variant: {
-        select: {
-          size: true,
-          product: { select: { name: true } },
-        },
-      },
-    },
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: 5,
   });
-  const topMap = new Map<string, { modelName: string; size: string; quantity: number; total: number }>();
-  for (const item of saleItems) {
-    const key = `${item.variant.product.name}-${item.variant.size}`;
-    const qty = item.quantity;
-    const total = Number(item.salePrice) * qty;
-    const existing = topMap.get(key);
-    if (existing) {
-      existing.quantity += qty;
-      existing.total += total;
-    } else {
-      topMap.set(key, {
-        modelName: item.variant.product.name,
-        size: item.variant.size,
-        quantity: qty,
-        total,
-      });
+
+  const topSellers: { modelName: string; size: string; quantity: number; total: number }[] = [];
+  if (topVariants.length > 0) {
+    const variantIds = topVariants.map(v => v.variantId);
+    const variantsWithProducts = await prisma.variant.findMany({
+      where: { id: { in: variantIds } },
+      select: {
+        id: true,
+        size: true,
+        price: true,
+        product: { select: { name: true } },
+      },
+    });
+    const variantMap = new Map(variantsWithProducts.map(v => [v.id, v]));
+    for (const item of topVariants) {
+      const variant = variantMap.get(item.variantId);
+      if (variant) {
+        const qty = item._sum.quantity || 0;
+        const total = Number(variant.price) * qty; // precio base * cantidad (sin descuentos)
+        topSellers.push({
+          modelName: variant.product.name,
+          size: variant.size,
+          quantity: qty,
+          total,
+        });
+      }
     }
   }
-  const topSellers = Array.from(topMap.values())
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5);
 
-  // Tendencia diaria (con todos los días del rango, en horario México)
+  // 4. Tendencia diaria (solo totales por día, usando findMany limitado al rango de fechas)
   const allSales = await prisma.sale.findMany({
     where: dateFilter,
     select: { total: true, createdAt: true },
@@ -157,7 +160,7 @@ export default async function ReportsPage({
     trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + Number(sale.total));
   }
 
-  // Generar todos los días del rango (desde startUTC hasta endUTC) en México
+  // Generar todos los días del rango (en México)
   const salesTrend = [];
   const currentDate = new Date(startUTC);
   const endDate = new Date(endUTC);

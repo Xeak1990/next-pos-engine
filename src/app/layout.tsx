@@ -12,15 +12,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
 
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
+  const isPublicRoute = pathname === "/login" || pathname === "/register" || pathname === "/catalog" || pathname === "/";
 
   useEffect(() => {
     isMounted.current = true;
     const controller = new AbortController();
 
     const fetchUser = async () => {
-      if (isAuthRoute) {
-        if (isMounted.current) setLoading(false);
+      if (isPublicRoute) {
+        setLoading(false);
         return;
       }
 
@@ -30,17 +30,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signal: controller.signal,
         });
         if (!isMounted.current) return;
-
         if (res.ok) {
           const data = await res.json();
           const userData = data.user || data.customer || data;
           const role = userData?.role;
           if (role === "ADMIN" || role === "MANAGER" || role === "CASHIER") {
-            setUser({
-              name: userData.name,
-              email: userData.email,
-              role: role as "ADMIN" | "MANAGER" | "CASHIER",
-            });
+            setUser({ name: userData.name, email: userData.email, role });
           } else {
             setUser(null);
           }
@@ -61,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       controller.abort();
       isMounted.current = false;
     };
-  }, [isAuthRoute]);
+  }, [isPublicRoute]);
 
   if (loading) {
     return (
@@ -71,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  const showSidebar = !isAuthRoute && user !== null;
+  const showSidebar = !isPublicRoute && user !== null;
 
   return (
     <html lang="es" className="h-full overflow-x-hidden">

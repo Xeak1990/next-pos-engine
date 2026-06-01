@@ -22,9 +22,8 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      // Empleados: correo termina en @bentenison.mx
-      const isEmployee = email.endsWith("@bentenison.mx");
-      const endpoint = isEmployee ? "/api/auth/login" : "/api/auth/customer/login";
+      // Endpoint único para empleados y clientes
+      const endpoint = "/api/auth/login";
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -39,13 +38,14 @@ export default function LoginScreen() {
         return;
       }
 
-      if (isEmployee) {
-        const role = data.user?.role as string | undefined;
-        let destination = "/dashboard";
-        if (role === "CASHIER") destination = "/terminal";
+      // El backend devuelve { ok: true, user: { role, name, email }, redirectTo }
+      const role = data.user?.role;
+      if (role && role !== "CUSTOMER") {
+        // Empleado: ADMIN, MANAGER, CASHIER
+        const destination = role === "CASHIER" ? "/terminal" : "/dashboard";
         window.location.href = destination;
       } else {
-        // Cliente externo (Gmail, Hotmail, etc.) redirige a la tienda
+        // Cliente (rol "CUSTOMER")
         window.location.href = returnUrl;
       }
     } catch (submitError) {

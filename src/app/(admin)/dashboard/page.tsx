@@ -4,13 +4,18 @@ import { cookies } from "next/headers";
 import { prisma } from "../../../lib/prisma";
 import { verifyAuthToken } from "../../../lib/token-utils";
 import { formatCurrency } from "../../../lib/utils";
-import { formatMexicoDate, getMexicoMonday, getMexicoDate } from "../../../lib/date";
+import {
+  formatMexicoDate,
+  getMexicoMonday,
+  getMexicoDate,
+} from "../../../lib/date";
+
+export const revalidate = 3600;
 
 // --------------------------------------------------------------
-// Funciones auxiliares para obtener rangos UTC basados en horario México
+// Funciones auxiliares (sin cambios)
 // --------------------------------------------------------------
 function getUTCRangeForMexicoDay(date: Date) {
-  // Obtener año, mes, día de la fecha en horario México
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
@@ -30,7 +35,7 @@ function getUTCRangeForMexicoYesterday(nowMexico: Date) {
 }
 
 function getUTCRangeForMexicoWeek() {
-  const mondayMexico = getMexicoMonday(); // Lunes en horario México
+  const mondayMexico = getMexicoMonday();
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
@@ -43,9 +48,6 @@ function getUTCRangeForMexicoWeek() {
   return { startUTC, endUTC };
 }
 
-// --------------------------------------------------------------
-// Componente Dashboard
-// --------------------------------------------------------------
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("bt_auth")?.value;
@@ -56,18 +58,16 @@ export default async function DashboardPage() {
   }
 
   const { role, storeId, storeName } = authPayload;
-  const nowMexico = getMexicoDate(); // Fecha actual en horario México (objeto Date ajustado)
+  const nowMexico = getMexicoDate();
 
-  // Rangos para hoy y ayer
   const { startUTC: startOfTodayUTC, endUTC: endOfTodayUTC } = getUTCRangeForMexicoDay(nowMexico);
   const { startUTC: startOfYesterdayUTC, endUTC: endOfYesterdayUTC } = getUTCRangeForMexicoYesterday(nowMexico);
-  // Rango para la semana (lunes a domingo en México)
   const { startUTC: startOfWeekUTC, endUTC: endOfWeekUTC } = getUTCRangeForMexicoWeek();
 
   const salesWhere = role === "MANAGER" && storeId ? { storeId } : {};
   const inventoryWhere = role === "MANAGER" && storeId ? { storeId } : {};
 
-  // Consultas secuenciales
+  // ========== Métricas KPI ==========
   const salesToday = await prisma.sale.aggregate({
     _sum: { total: true },
     where: { ...salesWhere, createdAt: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
@@ -86,55 +86,119 @@ export default async function DashboardPage() {
     where: { ...inventoryWhere, quantity: 0 },
   });
   const storesCount = role === "ADMIN" ? await prisma.store.count() : 1;
+
+  // ========== Alertas de stock (nuevas consultas) ==========
+  // Productos con stock CRÍTICO = 0 (incluye sucursal, color, producto, talla)
+  const criticalItems = await prisma.inventory.findMany({
+    where: { ...inventoryWhere, quantity: 0 },
+    select: {
+      quantity: true,
+      store: { select: { name: true } },
+      variant: {
+        select: {
+          size: true,
+          color: true,
+          product: { select: { name: true, brand: true } },
+        },
+      },
+    },
+    orderBy: { variant: { product: { name: "asc" } } },
+    take: 20,
+  });
+
+  // Productos con stock BAJO (1 a 5 unidades)
+  const lowStockItems = await prisma.inventory.findMany({
+    where: { ...inventoryWhere, quantity: { gte: 1, lte: 5 } },
+    select: {
+      quantity: true,
+      store: { select: { name: true } },
+      variant: {
+        select: {
+          size: true,
+          color: true,
+          product: { select: { name: true, brand: true } },
+        },
+      },
+    },
+    orderBy: { quantity: "asc" },
+    take: 20,
+  });
+
+  // ========== Ventas recientes ==========
   const recentSales = await prisma.sale.findMany({
     where: salesWhere,
-    include: { store: true },
+    select: {
+      id: true,
+      total: true,
+      createdAt: true,
+      store: { select: { name: true } },
+    },
     orderBy: { createdAt: "desc" },
     take: 5,
   });
-  const weeklySales = await prisma.sale.findMany({
+
+  // ========== Ventas semanales (gráfica) ==========
+  const weeklySalesRaw = await prisma.sale.findMany({
     where: { ...salesWhere, createdAt: { gte: startOfWeekUTC, lte: endOfWeekUTC } },
     select: { total: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
-  const saleItemsThisWeek = await prisma.saleItem.findMany({
-    where: {
-      sale: { ...salesWhere, createdAt: { gte: startOfWeekUTC, lte: endOfWeekUTC } },
-    },
-    select: {
-      quantity: true,
-      salePrice: true,
-      variant: { select: { size: true, product: { select: { name: true } } } },
-    },
-  });
 
-  // Procesar top productos
-  const topMap = new Map<string, { name: string; size: string; quantity: number; total: number }>();
-  for (const item of saleItemsThisWeek) {
-    const key = `${item.variant.product.name}-${item.variant.size}`;
-    const qty = item.quantity;
-    const total = Number(item.salePrice) * qty;
-    const existing = topMap.get(key);
-    if (existing) {
-      existing.quantity += qty;
-      existing.total += total;
-    } else {
-      topMap.set(key, { name: item.variant.product.name, size: item.variant.size, quantity: qty, total });
-    }
+  const salesByDay = new Map<string, number>();
+  for (const sale of weeklySalesRaw) {
+    const dayKey = sale.createdAt.toISOString().split("T")[0];
+    salesByDay.set(dayKey, (salesByDay.get(dayKey) || 0) + Number(sale.total));
   }
-  const topSellers = Array.from(topMap.values()).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
 
-  // Preparar datos para gráfica semanal (en horario México, usando las fechas UTC de cada día)
   const weekdays = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
   const weeklyChart = weekdays.map((_, index) => {
     const date = new Date(startOfWeekUTC);
     date.setUTCDate(date.getUTCDate() + index);
-    const value = weeklySales
-      .filter(sale => sale.createdAt.toISOString().split('T')[0] === date.toISOString().split('T')[0])
-      .reduce((sum, sale) => sum + Number(sale.total), 0);
-    return { label: weekdays[index], value };
+    const dayKey = date.toISOString().split("T")[0];
+    return { label: weekdays[index], value: salesByDay.get(dayKey) || 0 };
   });
 
+  // ========== Top productos (más vendidos de la semana) ==========
+  const topVariants = await prisma.saleItem.groupBy({
+    by: ["variantId"],
+    where: {
+      sale: { ...salesWhere, createdAt: { gte: startOfWeekUTC, lte: endOfWeekUTC } },
+    },
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: 5,
+  });
+
+  const variantIds = topVariants.map(v => v.variantId);
+  const topSellers: { name: string; size: string; quantity: number; total: number }[] = [];
+  if (variantIds.length > 0) {
+    const variantsWithProducts = await prisma.variant.findMany({
+      where: { id: { in: variantIds } },
+      select: {
+        id: true,
+        size: true,
+        price: true,
+        product: { select: { name: true } },
+      },
+    });
+    const variantMap = new Map(variantsWithProducts.map(v => [v.id, v]));
+    for (const item of topVariants) {
+      const variant = variantMap.get(item.variantId);
+      if (variant) {
+        const qty = item._sum.quantity || 0;
+        const total = Number(variant.price) * qty;
+        topSellers.push({
+          name: variant.product.name,
+          size: variant.size,
+          quantity: qty,
+          total,
+        });
+      }
+    }
+    topSellers.sort((a, b) => b.quantity - a.quantity);
+  }
+
+  // ========== Preparar coordenadas para la gráfica ==========
   const chartCoordinates = (() => {
     const width = 560;
     const height = 180;
@@ -153,6 +217,7 @@ export default async function DashboardPage() {
   })();
   const chartPolyline = chartCoordinates.map(p => `${p.x},${p.y}`).join(" ");
 
+  // ========== Valores para la UI ==========
   const salesTodayValue = Number(salesToday._sum.total || 0);
   const salesYesterdayValue = Number(salesYesterday._sum.total || 0);
   const activeStoreLabel = role === "MANAGER" ? storeName || "Sucursal activa" : "Operativas";
@@ -186,7 +251,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center gap-[5px] mt-1">
           <Link href="/reports" className="flex items-center gap-3 mb-[2.5px] rounded-[10px] border border-[#333333] bg-[#1A1A1A] px-[10px] py-[7px] text-sm text-[#D1D5DB]">
-            📊 Reportes
+            Reportes
           </Link>
           <Link href="/terminal" className="bt-button-primary rounded-[14px] text-xs uppercase tracking-[0.18em]">
             Abrir POS
@@ -194,8 +259,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarjetas KPI (igual, solo cambian los valores calculados arriba) */}
-      <section className="grid grid-cols-4 gap-[15px] mb-8">
+      {/* Tarjetas KPI */}
+      <section className="grid grid-cols-4 gap-[15px] mb-[15px]">
+        {/* Ventas hoy */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">VENTAS HOY</p>
@@ -210,6 +276,7 @@ export default async function DashboardPage() {
           </div>
         </article>
 
+        {/* Transacciones */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">TRANSACCIONES</p>
@@ -224,6 +291,7 @@ export default async function DashboardPage() {
           </div>
         </article>
 
+        {/* Stock bajo (contador) */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">STOCK BAJO</p>
@@ -238,6 +306,7 @@ export default async function DashboardPage() {
           </div>
         </article>
 
+        {/* Sucursales */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">SUCURSALES</p>
@@ -253,15 +322,16 @@ export default async function DashboardPage() {
         </article>
       </section>
 
-      {/* Ventas semanales y Top productos */}
+      {/* Gráfica y Top productos */}
       <section className="grid grid-cols-2 gap-[15px] mb-[15px]">
+        {/* Ventas semanales */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between gap-4 mb-4">
               <h2 className="text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center" }}>
-                📉 Ventas semanales
+                Ventas semanales
               </h2>
-              <span className="inline-block rounded-full bg-[#2C2418] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.2em] text-[#C2410C] shadow-sm">
+              <span className="inline-block rounded-full px-3 py-1 font-mono text-[12px] font-bold uppercase tracking-[0.2em] shadow-sm" style={{ backgroundColor: "#E8621A15", color: "#E8621A", borderRadius: "9999px", padding: "6px 12px", lineHeight: "1", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)" }}>
                 Esta semana
               </span>
             </div>
@@ -285,13 +355,14 @@ export default async function DashboardPage() {
           </div>
         </article>
 
+        {/* Top productos */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[420px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between gap-4 mb-4">
               <h2 className="text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center" }}>
-                🏆 Top productos
+                Top productos
               </h2>
-              <span className="inline-block rounded-full bg-[#1E2A1C] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.2em] text-[#2ECC71] shadow-sm">
+              <span className="inline-block rounded-full px-3 py-1 font-mono text-[12px] font-bold uppercase tracking-[0.2em] shadow-sm" style={{ backgroundColor: "#2ECC7115", color: "#2ECC71", borderRadius: "9999px", padding: "6px 12px", lineHeight: "1", boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.2)" }}>
                 Más vendidos
               </span>
             </div>
@@ -313,7 +384,7 @@ export default async function DashboardPage() {
                         <td className="py-2 text-left font-mono text-[11px] text-[#CBD5E1]">{item.size}</td>
                         <td className="py-2 text-right font-mono text-[11px] text-[#E8621A]">{item.quantity}</td>
                         <td className="py-2 text-right font-mono text-[11px] text-[#2ECC71]">{formatCurrency(item.total)}</td>
-                       </tr>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -327,15 +398,16 @@ export default async function DashboardPage() {
 
       {/* Ventas recientes y Alertas de stock */}
       <section className="grid grid-cols-2 gap-[15px]">
+        {/* Ventas recientes */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] overflow-hidden min-h-[260px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center" }}>
-                🕒 Ventas recientes
+                Ventas recientes
               </h2>
-              <button className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
+              <Link href="/reports" className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
                 Ver todas →
-              </button>
+              </Link>
             </div>
             <div className="flex-1 overflow-auto">
               <table className="w-full border-separate border-spacing-y-2">
@@ -355,7 +427,7 @@ export default async function DashboardPage() {
                         <td className="py-1.5 text-[11px] text-[#CBD5E1] truncate max-w-[100px]">{sale.store.name}</td>
                         <td className="py-1.5 font-mono text-[10px] text-[#888888]">{new Intl.DateTimeFormat("es-MX", { dateStyle: "short" }).format(sale.createdAt)}</td>
                         <td className="py-1.5 text-right font-mono text-[11px] text-[#E8621A]">{formatCurrency(Number(sale.total))}</td>
-                       </tr>
+                      </tr>
                     ))
                   ) : (
                     <tr><td colSpan={4} className="py-4 text-center text-[10px] text-[#888888] font-mono">Sin transacciones hoy</td></tr>
@@ -366,23 +438,82 @@ export default async function DashboardPage() {
           </div>
         </article>
 
+        {/* ALERTAS DE STOCK (versión mejorada) */}
         <article className="bt-panel rounded-[24px] flex flex-col shadow-[0_16px_45px_rgba(0,0,0,0.24)] min-h-[260px] pt-4 pb-4">
           <div className="w-[88%] mx-auto flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[20px] font-[900] uppercase text-white tracking-tight" style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center" }}>
-                ⚠️ Alertas de stock
+              <h2 className="text-[20px] font-[900] uppercase text-white tracking-tight"
+                style={{ fontFamily: "Arial, sans-serif", transform: "scale(0.9, 1.1)", transformOrigin: "left center" }}>
+                Alertas de stock
               </h2>
-              <button className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
+              <Link href="/inventory" className="rounded-[5px] border border-[#4B5563] bg-[#111111] px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#D1D5DB] font-[900] transition-colors hover:border-[#6B7280] hover:text-white">
                 Gestionar →
-              </button>
+              </Link>
             </div>
-            <div className="flex-1 flex items-center justify-center">
-              <label className="flex items-center gap-3 cursor-default">
-                <input type="checkbox" checked={lowStockCount === 0} readOnly className="h-4 w-4 rounded border-[#333333] bg-[#242424] accent-[#2ECC71] pointer-events-none" />
-                <span className={`text-[13px] font-semibold ${lowStockCount === 0 ? "text-[#2ECC71]" : "text-[#E8621A]"}`}>
-                  {lowStockCount === 0 ? "Todo en orden" : `${lowStockCount} alertas de stock`}
-                </span>
-              </label>
+            <div className="flex-1 overflow-y-auto">
+              {criticalItems.length === 0 && lowStockItems.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <span className="text-[13px] font-semibold text-[#2ECC71]">✓ Todo en orden</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Productos críticos (0 stock) */}
+                  {criticalItems.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-red-400">
+                          Crítico (sin stock)
+                        </span>
+                      </div>
+                      <ul className="space-y-2 text-[11px] text-[#CBD5E1]">
+                        {criticalItems.map((inv, idx) => (
+                          <li key={idx} className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <span className="font-medium text-white">
+                                {inv.variant.product.brand} {inv.variant.product.name}
+                              </span>
+                              <div className="text-[10px] text-[#9CA3AF]">
+                                {inv.variant.color ? `${inv.variant.color} • ` : ""}
+                                Talla {inv.variant.size} • {inv.store.name}
+                              </div>
+                            </div>
+                            <span className="text-red-400 font-mono whitespace-nowrap">0 uds</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Productos con stock bajo (1-5) */}
+                  {lowStockItems.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_6px_#eab308]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">
+                          Atención (stock bajo)
+                        </span>
+                      </div>
+                      <ul className="space-y-2 text-[11px] text-[#CBD5E1]">
+                        {lowStockItems.map((inv, idx) => (
+                          <li key={idx} className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <span className="font-medium text-white">
+                                {inv.variant.product.brand} {inv.variant.product.name}
+                              </span>
+                              <div className="text-[10px] text-[#9CA3AF]">
+                                {inv.variant.color ? `${inv.variant.color} • ` : ""}
+                                Talla {inv.variant.size} • {inv.store.name}
+                              </div>
+                            </div>
+                            <span className="text-yellow-400 font-mono whitespace-nowrap">{inv.quantity} uds</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </article>

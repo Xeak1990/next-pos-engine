@@ -60,7 +60,7 @@ export default function AccountPage() {
   return (
     <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible bg-[#060606]">
       <div className="mx-auto max-w-4xl">
-        {/* Cabecera con migas de pan y fecha */}
+        {/* Cabecera (original) */}
         <div className="flex w-full items-start justify-between mb-[15px]">
           <div className="flex flex-col">
             <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
@@ -88,64 +88,68 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* Panel de información del cliente */}
-        <div className="bt-panel rounded-2xl p-6 shadow-xl border border-[#333] space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Nombre completo
-              </p>
-              <p className="text-white font-sans">{customer.name}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Correo electrónico
-              </p>
-              <p className="text-white font-sans">{customer.email}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Teléfono
-              </p>
-              <p className="text-white font-sans">{customer.phone || "No registrado"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Dirección
-              </p>
-              <p className="text-white font-sans">{customer.address || "No registrada"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Ciudad
-              </p>
-              <p className="text-white font-sans">{customer.city || "No registrada"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
-                Código postal
-              </p>
-              <p className="text-white font-sans">{customer.postalCode || "No registrado"}</p>
+        {/* Tarjeta centrada estilo login */}
+        <div className="mx-auto max-w-[450px]">
+          <div className="bt-panel rounded-2xl shadow-xl border border-[#333] overflow-hidden">
+            <div className="w-[88%] mx-auto pt-6 pb-6">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Nombre completo
+                  </p>
+                  <p className="text-white font-sans">{customer.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Correo electrónico
+                  </p>
+                  <p className="text-white font-sans">{customer.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Teléfono
+                  </p>
+                  <p className="text-white font-sans">{customer.phone || "No registrado"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Dirección
+                  </p>
+                  <p className="text-white font-sans">{customer.address || "No registrada"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Ciudad
+                  </p>
+                  <p className="text-white font-sans">{customer.city || "No registrada"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-1">
+                    Código postal
+                  </p>
+                  <p className="text-white font-sans">{customer.postalCode || "No registrado"}</p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Botones de acción */}
-        <div className="mt-8 flex flex-wrap gap-4 justify-center">
-          <Link
-            href="/orders/history"
-            className="bt-button-primary px-6 py-2 rounded-full text-xs tracking-[0.18em]"
-            style={{ fontFamily: "Arial, sans-serif" }}
-          >
-            Ver mis pedidos
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="bt-button-ghost px-6 py-2 rounded-full text-xs tracking-[0.18em]"
-            style={{ fontFamily: "Arial, sans-serif" }}
-          >
-            Cerrar sesión
-          </button>
+          {/* Botones con separaciones exactas */}
+          <div className="flex flex-wrap gap-[5px] justify-center mt-[15px]">
+            <Link
+              href="/orders/history"
+              className="bt-button-primary px-6 py-2 rounded-full text-xs tracking-[0.18em]"
+              style={{ fontFamily: "Arial, sans-serif" }}
+            >
+              Ver mis pedidos
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="bt-button-ghost px-6 py-2 rounded-full text-xs tracking-[0.18em]"
+              style={{ fontFamily: "Arial, sans-serif" }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </div>
     </div>

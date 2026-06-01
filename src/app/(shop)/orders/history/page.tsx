@@ -41,18 +41,18 @@ export default function OrderHistoryPage() {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible bg-[#060606]">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-white text-lg">Cargando tus pedidos...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#060606]">
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-white">
+          Cargando tus pedidos...
+        </p>
       </div>
     );
   }
 
   return (
     <div className="w-full min-h-screen px-6 py-8 text-white overflow-y-visible bg-[#060606]">
-      <div className="mx-auto max-w-6xl">
-        {/* Cabecera con migas y título */}
+      <div className="mx-auto max-w-4xl">
+        {/* Cabecera (idéntica a AccountPage) */}
         <div className="flex w-full items-start justify-between mb-[15px]">
           <div className="flex flex-col">
             <nav className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#666666]">
@@ -84,88 +84,89 @@ export default function OrderHistoryPage() {
           </div>
         </div>
 
-        {/* Contenido principal */}
-        <div className="flex flex-row gap-[15px] items-start overflow-y-visible">
-          <div className="flex-1 min-w-0">
-            {orders.length === 0 ? (
-              <div className="bt-panel rounded-[24px] p-8 text-center">
-                <p className="text-[#9CA3AF] mb-4">No tienes pedidos aún.</p>
-                <Link
-                  href="/"
-                  className="bt-button-primary inline-block px-6 py-2 rounded-full text-xs tracking-[0.18em]"
-                >
-                  Seguir comprando
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {orders.map((order) => (
-                  <div key={order.id} className="bt-panel rounded-[24px] p-6 shadow-xl border border-[#333]">
-                    <div className="flex flex-wrap justify-between items-start gap-4">
-                      <div>
-                        <p className="font-mono text-xs text-[#9CA3AF]">Folio: #{order.id.slice(-8).toUpperCase()}</p>
-                        <p className="text-sm text-[#9CA3AF] mt-1">
-                          {new Date(order.createdAt).toLocaleDateString("es-MX", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
-                        </p>
+        {/* Contenedor de la tarjeta (ancho configurable) */}
+        {/* 👇 CAMBIA EL VALOR DE max-w-[500px] POR EL ANCHO QUE DESEES (ej: max-w-[550px], max-w-[600px], etc.) */}
+        <div className="mx-auto max-w-[1500px]">
+          <div className="bt-panel rounded-2xl shadow-xl border border-[#333] overflow-hidden">
+            <div className="w-[88%] mx-auto pt-6 pb-6">
+              {orders.length === 0 ? (
+                <div className="text-center">
+                  <p className="text-[#9CA3AF] mb-4">No tienes pedidos aún.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {orders.map((order, idx) => (
+                    <div key={order.id}>
+                      {idx > 0 && <div className="border-t border-dashed border-[#333] my-4" />}
+                      <div className="flex flex-wrap justify-between items-start gap-4">
+                        <div>
+                          <p className="font-mono text-xs text-[#9CA3AF]">
+                            Folio: #{order.id.slice(-8).toUpperCase()}
+                          </p>
+                          <p className="text-sm text-[#9CA3AF] mt-1">
+                            {new Date(order.createdAt).toLocaleDateString("es-MX", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-[#2ECC71]">
+                            {formatCurrency(order.total)}
+                          </p>
+                          <span
+                            className={`inline-block mt-1 text-xs font-semibold px-3 py-1 rounded-full ${
+                              order.status === "delivered"
+                                ? "bg-[#2ECC71]/20 text-[#2ECC71]"
+                                : order.status === "cancelled"
+                                ? "bg-[#E8621A]/20 text-[#E8621A]"
+                                : "bg-[#F59E0B]/20 text-[#F59E0B]"
+                            }`}
+                          >
+                            {order.status === "pending"
+                              ? "Pendiente"
+                              : order.status === "paid"
+                              ? "Pagado"
+                              : order.status === "shipped"
+                              ? "Enviado"
+                              : order.status === "delivered"
+                              ? "Entregado"
+                              : "Cancelado"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-[#2ECC71]">{formatCurrency(order.total)}</p>
-                        <span
-                          className={`inline-block mt-1 text-xs font-semibold px-3 py-1 rounded-full ${
-                            order.status === "delivered"
-                              ? "bg-[#2ECC71]/20 text-[#2ECC71]"
-                              : order.status === "cancelled"
-                              ? "bg-[#E8621A]/20 text-[#E8621A]"
-                              : "bg-[#F59E0B]/20 text-[#F59E0B]"
-                          }`}
-                        >
-                          {order.status === "pending"
-                            ? "Pendiente"
-                            : order.status === "paid"
-                            ? "Pagado"
-                            : order.status === "shipped"
-                            ? "Enviado"
-                            : order.status === "delivered"
-                            ? "Entregado"
-                            : "Cancelado"}
-                        </span>
+                      <div className="mt-3">
+                        <p className="text-sm font-semibold text-white mb-2">Productos</p>
+                        <div className="space-y-2">
+                          {order.items.map((item, itemIdx) => (
+                            <div key={itemIdx} className="flex justify-between text-sm">
+                              <span className="text-[#D1D5DB]">
+                                {item.name} x{item.quantity}
+                              </span>
+                              <span className="font-mono text-white">
+                                {formatCurrency(item.price * item.quantity)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="border-t border-dashed border-[#333] my-4"></div>
-                    <div>
-                      <p className="text-sm font-semibold text-white mb-2">Productos</p>
-                      <div className="space-y-2">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span className="text-[#D1D5DB]">
-                              {item.name} x{item.quantity}
-                            </span>
-                            <span className="font-mono text-white">
-                              {formatCurrency(item.price * item.quantity)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Botón volver al inicio */}
-        <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="bt-button-ghost inline-block px-6 py-2 rounded-full text-xs tracking-[0.18em]"
-          >
-            ← Seguir comprando
-          </Link>
+          {/* Botón "Seguir comprando" fuera de la tarjeta, con separación de 10px */}
+          <div className="flex justify-center mt-[10px]">
+            <Link
+              href="/"
+              className="bt-button-ghost inline-block px-6 py-2 rounded-full text-xs tracking-[0.18em]"
+            >
+              ← Seguir comprando
+            </Link>
+          </div>
         </div>
       </div>
     </div>

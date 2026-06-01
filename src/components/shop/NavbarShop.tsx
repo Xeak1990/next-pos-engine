@@ -12,7 +12,7 @@ export default function NavbarShop() {
   const searchParams = useSearchParams();
   const { clearCart } = useCartWeb();
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [user, setUser] = useState<{ name: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email?: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isEmployee, setIsEmployee] = useState(false);
 
@@ -34,9 +34,9 @@ export default function NavbarShop() {
         });
         if (res.ok) {
           const data = await res.json();
-          const customerData = data.customer || data;
-          if (customerData?.name) {
-            setUser(customerData);
+          // El endpoint devuelve directamente los datos del cliente (id, name, email...)
+          if (data?.name) {
+            setUser({ name: data.name, email: data.email });
           } else {
             setUser(null);
           }
@@ -69,6 +69,7 @@ export default function NavbarShop() {
   };
 
   const showUserButton = !isEmployee;
+  const userInitial = user?.name?.charAt(0).toUpperCase() || "";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#222222] bg-[#0A0A0A]/90 backdrop-blur-md">
@@ -108,13 +109,14 @@ export default function NavbarShop() {
         <div className="flex items-center gap-4">
           {showUserButton && (
             <div className="relative">
+              {/* BOTÓN DE PERFIL: Tamaño 9x9, hover naranja, focus ring */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1A1A1A] text-sm font-medium text-white transition-colors hover:bg-[#E8621A] focus:outline-none"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1A1A1A] text-sm font-medium text-white transition-all hover:bg-[#E8621A] focus:outline-none focus:ring-2 focus:ring-[#E8621A]/50"
                 aria-label="Menú de usuario"
               >
                 {user ? (
-                  <span className="uppercase">{user.name.charAt(0)}</span>
+                  <span className="uppercase font-bold">{userInitial}</span>
                 ) : (
                   <svg
                     className="h-5 w-5"
@@ -134,15 +136,20 @@ export default function NavbarShop() {
               {dropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-48 rounded-md border border-[#333] bg-[#1A1A1A] py-1 shadow-lg z-50">
+                  {/* MENÚ DESPLEGABLE: ancho 56, bordes redondeados, sombra, fondo oscuro */}
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-[#333] bg-[#1A1A1A] shadow-xl z-50 overflow-hidden">
                     {user ? (
                       <>
-                        <div className="px-4 py-2 text-sm text-white border-b border-[#333]">
-                          Hola, {user.name.split(" ")[0] || "Usuario"}
+                        {/* CABECERA CON NOMBRE Y EMAIL */}
+                        <div className="px-4 py-3 text-sm text-white border-b border-[#333] bg-[#111111]">
+                          <p className="font-semibold">Hola, {user.name.split(" ")[0] || "Usuario"}</p>
+                          {user.email && (
+                            <p className="text-xs text-[#9CA3AF] mt-0.5">{user.email}</p>
+                          )}
                         </div>
                         <Link
                           href="/account"
-                          className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                          className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
                           onClick={() => setDropdownOpen(false)}
                         >
                           Mi cuenta
@@ -152,7 +159,7 @@ export default function NavbarShop() {
                             handleLogout();
                             setDropdownOpen(false);
                           }}
-                          className="block w-full text-left px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                          className="block w-full text-left px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
                         >
                           Cerrar sesión
                         </button>
@@ -160,7 +167,7 @@ export default function NavbarShop() {
                     ) : (
                       <Link
                         href="/login"
-                        className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white"
+                        className="block px-4 py-3 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors text-center"
                         onClick={() => setDropdownOpen(false)}
                       >
                         Iniciar sesión
