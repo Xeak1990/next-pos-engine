@@ -93,6 +93,12 @@ export default async function DashboardPage() {
   const { startUTC: startOfYesterdayUTC, endUTC: endOfYesterdayUTC } = getUTCRangeForMexicoYesterday(nowMexico);
   const { startUTC: startOfWeekUTC, endUTC: endOfWeekUTC } = getUTCRangeForMexicoWeek();
 
+  // Logs de rangos
+  console.log("[Dashboard] Rangos de fechas:");
+  console.log(`  Hoy (México): ${nowMexico.toISOString()} -> UTC start: ${startOfTodayUTC.toISOString()}, end: ${endOfTodayUTC.toISOString()}`);
+  console.log(`  Ayer (México) UTC start: ${startOfYesterdayUTC.toISOString()}, end: ${endOfYesterdayUTC.toISOString()}`);
+  console.log(`  Semana (lunes a domingo) UTC start: ${startOfWeekUTC.toISOString()}, end: ${endOfWeekUTC.toISOString()}`);
+
   const salesWhere = role === "MANAGER" && storeId ? { storeId } : {};
   const inventoryWhere = role === "MANAGER" && storeId ? { storeId } : {};
 
@@ -115,6 +121,11 @@ export default async function DashboardPage() {
     where: { ...inventoryWhere, quantity: 0 },
   });
   const storesCount = role === "ADMIN" ? await prisma.store.count() : 1;
+
+  console.log("[Dashboard] Métricas KPI:");
+  console.log(`  Ventas hoy: ${Number(salesToday._sum.total || 0)} (${transactionsToday} transacciones)`);
+  console.log(`  Ventas ayer: ${Number(salesYesterday._sum.total || 0)}`);
+  console.log(`  Stock bajo: ${lowStockCount}, Agotados: ${outOfStockCount}`);
 
   // ========== Alertas de stock ==========
   const criticalItems = await prisma.inventory.findMany({
@@ -188,6 +199,9 @@ export default async function DashboardPage() {
     return { label: weekdays[index], value: salesByDay.get(dayKey) || 0 };
   });
 
+  console.log("[Dashboard] Gráfica semanal (días en México):");
+  weeklyChart.forEach(day => console.log(`  ${day.label}: $${day.value}`));
+
   // ========== Top productos ==========
   const topVariants = await prisma.saleItem.groupBy({
     by: ["variantId"],
@@ -227,6 +241,8 @@ export default async function DashboardPage() {
     }
     topSellers.sort((a, b) => b.quantity - a.quantity);
   }
+
+  console.log("[Dashboard] Top 5 productos:", topSellers.map(p => `${p.name} (${p.size}): ${p.quantity} uds`));
 
   // ========== Preparar coordenadas para la gráfica ==========
   const chartCoordinates = (() => {
@@ -288,9 +304,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarjetas KPI */}
+      {/* Tarjetas KPI (sin cambios visuales) */}
       <section className="grid grid-cols-4 gap-[15px] mb-[15px]">
-        {/* Ventas hoy */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">VENTAS HOY</p>
@@ -305,7 +320,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Transacciones */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">TRANSACCIONES</p>
@@ -320,7 +334,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Stock bajo */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">STOCK BAJO</p>
@@ -335,7 +348,6 @@ export default async function DashboardPage() {
           </div>
         </article>
 
-        {/* Sucursales */}
         <article className="bt-panel rounded-[22px] flex flex-col shadow-[0_12px_30px_rgba(0,0,0,0.22)] overflow-hidden relative" style={{ height: "125px", padding: "0" }}>
           <div className="w-[88%] mx-auto pt-4 flex justify-between items-start z-10">
             <p className="text-[12px] font-semibold text-[#9CA3AF] font-sans">SUCURSALES</p>
@@ -486,7 +498,6 @@ export default async function DashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Productos críticos (0 stock) */}
                   {criticalItems.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">
@@ -506,8 +517,6 @@ export default async function DashboardPage() {
                       </ul>
                     </div>
                   )}
-
-                  {/* Productos con stock bajo (1-5) */}
                   {lowStockItems.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-2 sticky top-0 bg-[#060606] py-1">

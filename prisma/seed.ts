@@ -14,8 +14,9 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// Distribución uniforme en los últimos 60 días (incluye hoy)
 function randomDateUpTo60DaysBack(now: Date): Date {
-  const daysAgo = randomInt(0, 59);
+  const daysAgo = randomInt(0, 59); // 0 = hoy, 59 = hace 60 días
   const target = new Date(now);
   target.setDate(now.getDate() - daysAgo);
   target.setHours(randomInt(8, 22), randomInt(0, 59), randomInt(0, 59), 0);
@@ -23,10 +24,10 @@ function randomDateUpTo60DaysBack(now: Date): Date {
 }
 
 // --------------------------------------------------------------
-// Generación de ventas (optimizada, en lotes)
+// Generación de ventas (abundantes y con cobertura diaria)
 // --------------------------------------------------------------
-async function generateFakeSales(totalTarget: number = 50) {
-  console.log(`🌱 Generando ${totalTarget} ventas en modo paralelo controlado...`);
+async function generateFakeSales(totalTarget: number = 80) {
+  console.log(`🌱 Generando ${totalTarget} ventas distribuidas en los últimos 60 días...`);
 
   const stores = await prisma.store.findMany();
   if (stores.length === 0) throw new Error("No hay sucursales");
@@ -36,7 +37,7 @@ async function generateFakeSales(totalTarget: number = 50) {
   });
   if (variants.length === 0) throw new Error("No hay variantes");
 
-  // Mapa de inventario en memoria (stock inicial)
+  // Mapa de inventario en memoria
   const inventoryMap = new Map<string, number>();
   for (const variant of variants) {
     for (const inv of variant.inventory) {
@@ -46,7 +47,7 @@ async function generateFakeSales(totalTarget: number = 50) {
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
-  let hasTodaySale = false;
+  let todaySalesCount = 0;
 
   const salesToCreate: Array<{
     storeId: string;
@@ -63,14 +64,14 @@ async function generateFakeSales(totalTarget: number = 50) {
   let attempts = 0;
   const maxAttempts = totalTarget * 3;
 
+  // 1. Generar ventas aleatorias (uniforme en días)
   while (salesToCreate.length < totalTarget && attempts < maxAttempts) {
     attempts++;
     const store = stores[Math.floor(Math.random() * stores.length)];
     const createdAt = randomDateUpTo60DaysBack(now);
 
-    if (!hasTodaySale && createdAt.toISOString().split('T')[0] === todayStr) {
-      hasTodaySale = true;
-    }
+    const isToday = createdAt.toISOString().split('T')[0] === todayStr;
+    if (isToday) todaySalesCount++;
 
     const availableVariants = variants.filter((v: Variant) => {
       const stock = inventoryMap.get(`${store.id}-${v.id}`);
@@ -120,7 +121,6 @@ async function generateFakeSales(totalTarget: number = 50) {
     }
 
     if (!validSale || itemsData.length === 0) {
-      // Revertir cambios de inventario en memoria para esta venta fallida
       for (const item of itemsData) {
         const key = `${store.id}-${item.variantId}`;
         const current = inventoryMap.get(key) || 0;
@@ -137,64 +137,115 @@ async function generateFakeSales(totalTarget: number = 50) {
     });
   }
 
-  // Forzar venta hoy si no existe
-  if (!hasTodaySale) {
-    console.log("⚠️ No se generó venta hoy. Creando una forzada...");
-    let storeWithStock: Store | null = null;
-    let variantWithStock: Variant | null = null;
+  // 2. Forzar al menos una venta por día en el mes actual (desde el día 1 hasta hoy)
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1);
+  const today = new Date(currentYear, currentMonth - 1, now.getDate());
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+  console.log(`🌱 Asegurando al menos una venta por día en ${currentYear}-${currentMonth}...`);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const targetDate = new Date(currentYear, currentMonth - 1, d);
+    if (targetDate > today) break; // no forzar días futuros
+
+    // Verificar si ya hay alguna venta en ese día
+    const alreadyHasSale = salesToCreate.some(sale => {
+      const saleDay = sale.createdAt.getDate();
+      const saleMonth = sale.createdAt.getMonth() + 1;
+      const saleYear = sale.createdAt.getFullYear();
+      return saleDay === d && saleMonth === currentMonth && saleYear === currentYear;
+    });
+
+    if (!alreadyHasSale) {
+      // Buscar una tienda y variante con stock
+      let storeWithStock: Store | null = null;
+      let variantWithStock: Variant | null = null;
+      for (const store of stores) {
+        for (const variant of variants) {
+          const stock = inventoryMap.get(`${store.id}-${variant.id}`);
+          if (stock && stock > 0) {
+            storeWithStock = store;
+            variantWithStock = variant;
+            break;
+          }
+        }
+        if (storeWithStock) break;
+      }
+      if (storeWithStock && variantWithStock) {
+        const quantity = 1;
+        const price = Number(variantWithStock.price);
+        const salePrice = price;
+        const saleTotal = price;
+        const currentStock = inventoryMap.get(`${storeWithStock.id}-${variantWithStock.id}`)!;
+        inventoryMap.set(`${storeWithStock.id}-${variantWithStock.id}`, currentStock - quantity);
+        // Crear la venta a las 12:00 (para variar un poco)
+        const forcedDate = new Date(targetDate);
+        forcedDate.setHours(12, 0, 0, 0);
+        salesToCreate.push({
+          storeId: storeWithStock.id,
+          total: saleTotal,
+          createdAt: forcedDate,
+          items: [{ variantId: variantWithStock.id, quantity, price, salePrice }],
+        });
+        console.log(`✅ Venta forzada para el día ${d}/${currentMonth}/${currentYear}`);
+      } else {
+        console.warn(`⚠️ No se pudo forzar venta para el día ${d}/${currentMonth}/${currentYear}: sin stock.`);
+      }
+    }
+  }
+
+  // 3. Forzar entre 2 y 3 ventas hoy (si no se alcanzaron)
+  const minTodaySales = randomInt(2, 3);
+  if (todaySalesCount < minTodaySales) {
+    console.log(`⚠️ Solo ${todaySalesCount} ventas generadas hoy. Forzando ${minTodaySales - todaySalesCount} venta(s) adicional(es)...`);
+    let forced = 0;
     for (const store of stores) {
+      if (forced >= minTodaySales - todaySalesCount) break;
       for (const variant of variants) {
         const stock = inventoryMap.get(`${store.id}-${variant.id}`);
         if (stock && stock > 0) {
-          storeWithStock = store;
-          variantWithStock = variant;
-          break;
+          const quantity = 1;
+          const price = Number(variant.price);
+          const salePrice = price;
+          const saleTotal = price;
+          const currentStock = inventoryMap.get(`${store.id}-${variant.id}`)!;
+          inventoryMap.set(`${store.id}-${variant.id}`, currentStock - quantity);
+          salesToCreate.push({
+            storeId: store.id,
+            total: saleTotal,
+            createdAt: now,
+            items: [{ variantId: variant.id, quantity, price, salePrice }],
+          });
+          forced++;
+          if (forced >= minTodaySales - todaySalesCount) break;
         }
       }
-      if (storeWithStock) break;
     }
-    if (storeWithStock && variantWithStock) {
-      const quantity = 1;
-      const price = Number(variantWithStock.price);
-      const salePrice = price;
-      const saleTotal = price;
-      const currentStock = inventoryMap.get(`${storeWithStock.id}-${variantWithStock.id}`)!;
-      inventoryMap.set(`${storeWithStock.id}-${variantWithStock.id}`, currentStock - quantity);
-      salesToCreate.push({
-        storeId: storeWithStock.id,
-        total: saleTotal,
-        createdAt: now,
-        items: [{ variantId: variantWithStock.id, quantity, price, salePrice }],
-      });
-      console.log("✅ Venta forzada agregada al lote.");
-    } else {
-      console.warn("⚠️ No se pudo crear venta forzada: sin stock.");
-    }
+    console.log(`✅ Forzadas ${forced} venta(s) para hoy.`);
+  } else {
+    console.log(`✅ Ya hay ${todaySalesCount} ventas hoy.`);
   }
 
-  console.log(`📦 Preparadas ${salesToCreate.length} ventas. Insertando en lotes de 10...`);
+  console.log(`📦 Preparadas ${salesToCreate.length} ventas. Insertando una por una (secuencial)...`);
 
-  // Insertar en lotes
-  const BATCH_SIZE = 10;
-  for (let i = 0; i < salesToCreate.length; i += BATCH_SIZE) {
-    const batch = salesToCreate.slice(i, i + BATCH_SIZE);
-    const promises = batch.map((sale) =>
-      prisma.sale.create({
-        data: {
-          storeId: sale.storeId,
-          total: sale.total,
-          createdAt: sale.createdAt,
-          items: {
-            create: sale.items,
-          },
+  // Insertar ventas secuencialmente (una tras otra) para evitar saturar conexiones
+  for (const sale of salesToCreate) {
+    await prisma.sale.create({
+      data: {
+        storeId: sale.storeId,
+        total: sale.total,
+        createdAt: sale.createdAt,
+        items: {
+          create: sale.items,
         },
-      })
-    );
-    await Promise.all(promises);
-    console.log(`✅ Lote ${Math.floor(i / BATCH_SIZE) + 1} completado (${batch.length} ventas).`);
+      },
+    });
   }
 
-  // Actualizar inventario final en lotes
+  console.log(`✅ Ventas insertadas: ${salesToCreate.length}`);
+
+  // Actualizar inventario final secuencialmente
   const allInventory = await prisma.inventory.findMany();
   const updates = allInventory
     .map((inv: Inventory) => {
@@ -208,25 +259,21 @@ async function generateFakeSales(totalTarget: number = 50) {
     .filter((upd): upd is { id: string; quantity: number } => upd !== null);
 
   if (updates.length > 0) {
-    console.log(`📦 Actualizando ${updates.length} registros de inventario en lotes...`);
-    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
-      const batch = updates.slice(i, i + BATCH_SIZE);
-      const updatePromises = batch.map((upd) =>
-        prisma.inventory.update({
-          where: { id: upd.id },
-          data: { quantity: upd.quantity },
-        })
-      );
-      await Promise.all(updatePromises);
-      console.log(`✅ Lote de inventario ${Math.floor(i / BATCH_SIZE) + 1} completado.`);
+    console.log(`📦 Actualizando ${updates.length} registros de inventario secuencialmente...`);
+    for (const upd of updates) {
+      await prisma.inventory.update({
+        where: { id: upd.id },
+        data: { quantity: upd.quantity },
+      });
     }
+    console.log("✅ Inventario actualizado.");
   }
 
-  console.log(`✅ Ventas generadas: ${salesToCreate.length} (de ${totalTarget} intentos)`);
+  console.log(`✅ Ventas generadas: ${salesToCreate.length} (objetivo: ${totalTarget})`);
 }
 
 // --------------------------------------------------------------
-// LIMPIEZA PROFUNDA (orden correcto: hijos → padres)
+// LIMPIEZA PROFUNDA
 // --------------------------------------------------------------
 async function cleanDatabase() {
   console.log("🧹 Limpiando datos existentes...");
@@ -247,10 +294,9 @@ async function main() {
   const plainPasswordStaff = process.env.SEED_PASSWORD || "XZNRXNJTESGAQA";
   const staffPass = await hashPassword(plainPasswordStaff);
 
-  // 1. Limpieza completa de datos transaccionales
   await cleanDatabase();
 
-  // 2. Crear categorías variadas
+  // Crear categorías variadas
   const categoriesData = [
     { name: "Casual", slug: "casual" },
     { name: "Deportivo", slug: "deportivo" },
@@ -269,7 +315,7 @@ async function main() {
     categories.push(category);
   }
 
-  // 3. Sucursales
+  // Sucursales
   const storesData = [
     { name: "Centro Xalapa", location: "Enriquez #10, Centro Histórico" },
     { name: "Plaza Américas", location: "Carr. Xalapa-Veracruz Km 2" },
@@ -288,8 +334,7 @@ async function main() {
     stores.push(store);
   }
 
-  // 4. Usuarios internos (admin, gerentes, cajeros)
-  // Admin
+  // Usuarios internos
   await prisma.user.upsert({
     where: { email: "admin@bentenison.mx" },
     update: { password: staffPass },
@@ -302,7 +347,6 @@ async function main() {
     },
   });
 
-  // Gerentes
   for (const store of stores) {
     const managerEmail = `gerente.${store.name.toLowerCase().replace(/\s/g, "")}@bentenison.mx`;
     await prisma.user.upsert({
@@ -318,7 +362,6 @@ async function main() {
     });
   }
 
-  // Cajeros
   for (const store of stores) {
     const num = randomInt(1, 3);
     for (let i = 1; i <= num; i++) {
@@ -337,7 +380,7 @@ async function main() {
     }
   }
 
-  // 5. Usuario cliente de prueba (modelo Customer) – con datos completos
+  // Cliente de prueba con datos completos
   const testCustomerPassword = "password123";
   const hashedCustomerPassword = await hashPassword(testCustomerPassword);
   await prisma.customer.upsert({
@@ -354,7 +397,7 @@ async function main() {
     },
   });
 
-  // 6. Productos y variantes con categorías aleatorias
+  // Productos y variantes con categorías aleatorias
   const productsData = [
     { name: "Dunk Low", brand: "Nike", basePrice: 2499, skuPrefix: "NIKE-DUNK" },
     { name: "Stan Smith", brand: "Adidas", basePrice: 2199, skuPrefix: "AD-STAN" },
@@ -362,13 +405,11 @@ async function main() {
     { name: "RS-X", brand: "Puma", basePrice: 1899, skuPrefix: "PUMA-RSX" },
     { name: "574", brand: "New Balance", basePrice: 1799, skuPrefix: "NB-574" },
     { name: "Chuck Taylor", brand: "Converse", basePrice: 1299, skuPrefix: "CONV-CHUCK" },
-    // Puedes añadir más productos si quieres, pero con categorías variadas se distribuirán
   ];
 
   const sizes = ["25", "26", "27", "28", "29", "30", "31"];
 
   for (const p of productsData) {
-    // Elegir una categoría aleatoria
     const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     await prisma.product.create({
       data: {
@@ -393,8 +434,8 @@ async function main() {
     });
   }
 
-  // 7. Generar ventas ficticias (entre 45 y 55)
-  const ventasObjetivo = randomInt(45, 55);
+  // Generar ventas (entre 80 y 100)
+  const ventasObjetivo = randomInt(80, 100);
   await generateFakeSales(ventasObjetivo);
 
   console.log("✅ Seed completado exitosamente.");

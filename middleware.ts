@@ -8,12 +8,15 @@ const CASHIER_ALLOWED = new Set(["/terminal", "/inventory"]);
 const CASHIER_BLOCKED = new Set(["/admin", "/reports", "/dashboard", "/users"]);
 const CUSTOMER_PREFIXES = ["/account/", "/orders/history/"];
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-me"
-);
-const JWT_CUSTOMER_SECRET = new TextEncoder().encode(
-  process.env.JWT_CUSTOMER_SECRET || process.env.JWT_SECRET || "fallback-secret-change-me"
-);
+// Obtener secretos con logs
+const JWT_SECRET_RAW = process.env.JWT_SECRET || "fallback-secret-change-me";
+const JWT_CUSTOMER_SECRET_RAW = process.env.JWT_CUSTOMER_SECRET || process.env.JWT_SECRET || "fallback-secret-change-me";
+
+console.log(`[middleware] JWT_SECRET definido: ${!!process.env.JWT_SECRET}`);
+console.log(`[middleware] JWT_CUSTOMER_SECRET definido: ${!!process.env.JWT_CUSTOMER_SECRET}`);
+
+const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW);
+const JWT_CUSTOMER_SECRET = new TextEncoder().encode(JWT_CUSTOMER_SECRET_RAW);
 
 interface AuthPayload {
   userId: string;
@@ -22,30 +25,32 @@ interface AuthPayload {
   storeId?: string;
 }
 
-async function verifyToken(token: string, secret: Uint8Array): Promise<AuthPayload | null> {
+async function verifyToken(token: string, secret: Uint8Array, type: "employee" | "customer"): Promise<AuthPayload | null> {
   try {
+    console.log(`[verifyToken] Verificando token ${type} (primeros 20): ${token.substring(0, 20)}...`);
     const { payload } = await jwtVerify(token, secret);
     if (typeof payload.userId !== "string") {
-      console.warn("[verifyToken] Payload sin userId");
+      console.warn(`[verifyToken] Payload de ${type} sin userId`);
       return null;
     }
+    console.log(`[verifyToken] Token ${type} válido, userId: ${payload.userId}`);
     return payload as unknown as AuthPayload;
   } catch (err) {
-    console.error("[verifyToken] Error verificando token:", err);
+    console.error(`[verifyToken] Error verificando token ${type}:`, err);
     return null;
   }
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  console.log(`[middleware] Procesando ruta: ${pathname}`);
+  console.log(`[middleware] ====== Iniciando procesamiento de ruta: ${pathname} ======`);
 
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname === "/favicon.ico"
   ) {
-    console.log("[middleware] Ruta excluida (asset o API)");
+    console.log("[middleware] Ruta excluida (asset o API) -> NextResponse.next()");
     return NextResponse.next();
   }
 
@@ -59,13 +64,21 @@ export async function middleware(request: NextRequest) {
     CUSTOMER_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isCustomerPath) {
-    console.log("[middleware] Ruta protegida para clientes");
+    console.log("[middleware] Ruta protegida para clientes:", pathname);
     const customerToken = request.cookies.get("bt_customer_token")?.value;
+    console.log(`[middleware] Cookie bt_customer_token existe: ${!!customerToken}`);
+    if (customerToken) {
+      console.log(`[middleware] Valor cookie (primeros 20): ${customerToken.substring(0, 20)}...`);
+    } else {
+      console.log("[middleware] No se encontró cookie de cliente");
+    }
+
     if (!customerToken) {
-      console.log("[middleware] No hay cookie de cliente, redirigiendo a /login");
+      console.log("[middleware] Redirigiendo a /login porque falta cookie");
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    const customerPayload = await verifyToken(customerToken, JWT_CUSTOMER_SECRET);
+
+    const customerPayload = await verifyToken(customerToken, JWT_CUSTOMER_SECRET, "customer");
     if (!customerPayload) {
       console.log("[middleware] Token de cliente inválido, eliminando cookie y redirigiendo");
       const response = NextResponse.redirect(new URL("/login", request.url));
@@ -76,13 +89,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Resto del middleware para empleados (igual)
   const token = request.cookies.get("bt_auth")?.value;
+  console.log(`[middleware] Cookie bt_auth existe: ${!!token}`);
   if (!token) {
-    console.log("[middleware] No hay cookie bt_auth, redirigiendo a /login");
+    console.log("[middleware] No hay cookie de empleado, redirigiendo a /login");
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const payload = await verifyToken(token, JWT_SECRET);
+  const payload = await verifyToken(token, JWT_SECRET, "employee");
   if (!payload) {
     console.log("[middleware] Token de empleado inválido, eliminando cookie y redirigiendo");
     const response = NextResponse.redirect(new URL("/login", request.url));

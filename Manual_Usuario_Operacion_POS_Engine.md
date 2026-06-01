@@ -1,5 +1,3 @@
-# Manual de Usuario y Operación de POS Engine
-
 ## 1. Introducción
 
 POS Engine es un sistema de gestión y ventas omnicanal diseñado para administrar operaciones comerciales desde un único entorno digital. La plataforma integra la venta en punto de venta físico, la administración interna de inventario y sucursales, y la experiencia de compra en línea para clientes.
@@ -8,254 +6,269 @@ El sistema permite controlar productos, variantes, existencias por sucursal, usu
 
 POS Engine se divide en cuatro áreas funcionales:
 
-- **Administración:** gestión de inventario, sucursales, usuarios internos y reportes.
-- **Terminal POS:** flujo de venta presencial mediante carrito, cobro y ticket.
-- **Tienda en línea:** catálogo, carrito web, checkout e historial de pedidos.
-- **Autenticación:** acceso diferenciado para staff y clientes mediante tokens JWT independientes.
+- **Administración:** Gestión de inventario, sucursales, usuarios internos y reportes.
+    
+- **Terminal POS:** Flujo de venta presencial mediante carrito, cobro y ticket.
+    
+- **Tienda en línea:** Catálogo, carrito web, checkout e historial de pedidos.
+    
+- **Autenticación:** Acceso diferenciado para staff y clientes mediante tokens JWT independientes.
+    
 
 ## 2. Guía de Acceso
 
-El acceso al sistema se realiza desde la pantalla de inicio de sesión. El sistema identifica automáticamente si las credenciales corresponden a un usuario interno o a un cliente, y redirige al módulo correspondiente.
+El acceso al sistema se realiza desde la pantalla de inicio de sesión. El sistema identifica automáticamente si las credenciales corresponden a un usuario interno o a un cliente.
 
-| Tipo de usuario | Usuario de prueba | Contraseña | Ruta inicial esperada | Alcance principal |
+| **Tipo de usuario** | **Usuario de prueba**                | **Contraseña**   | **Ruta inicial** | **Alcance principal**     |
+| ------------------- | ------------------------------------ | ---------------- | ---------------- | ------------------------- |
+| **Cliente**         | `test.customer@gmail.com`            | `password123`    | `/`              | Catálogo, carrito, cuenta |
+| **Administrador**   | `admin@bentenison.mx`                | `XZNRXNJTESGAQA` | `/dashboard`     | Acceso total              |
+| **Gerente**         | `gerente.centroxalapa@bentenison.mx` | `XZNRXNJTESGAQA` | `/dashboard`     | Gestión sucursal          |
+| **Cajero**          | `cajero1.centroxalapa@bentenison.mx` | `XZNRXNJTESGAQA` | `/terminal`      | Ventas físicas            |
+
+## 3. Inicio Rápido (Onboarding)
+
+Para que un usuario nuevo realice su primera venta en la terminal POS, se recomienda seguir este flujo inicial:
+
+1. **Acceder a la terminal:** Iniciar sesión con una cuenta de cajero y entrar a `/terminal`. El sistema mostrará el catálogo de productos disponible para la sucursal operativa.
+    
+2. **Construir el carrito:** Buscar el producto, seleccionar la variante correspondiente, confirmar la talla disponible y agregar el artículo al carrito de venta.
+    
+3. **Cobrar y emitir ticket:** Revisar subtotal, IVA, descuentos y total; abrir el modal de pago, seleccionar el método de cobro y confirmar la venta para generar el ticket de cierre.
+
+## 4. Manual de Operación para Staff
+
+_(Insertar aquí: Captura de pantalla del Dashboard principal)_
+
+### 4.1 Panel de Control (Dashboard)
+
+Los perfiles de administrador y gerente acceden al panel central desde `/dashboard`. Este panel actúa como el centro de mando del sistema, diseñado para proporcionar una vista panorámica de la salud operativa del negocio en tiempo real.
+
+#### 4.1.1 Indicadores clave (KPIs)
+
+El Dashboard centraliza los siguientes indicadores estratégicos para la toma de decisiones:
+
+- **Ventas del día:** Monto total acumulado en la jornada actual.
+    
+- **Transacciones de hoy:** Conteo total de operaciones realizadas.
+    
+- **Ventas semanales:** Comparativa de rendimiento en los últimos 7 días.
+    
+- **Sucursales:** Cantidad total de puntos de venta activos en el sistema.
+    
+- **Top de productos:** Ranking de los artículos más vendidos, facilitando la identificación de productos estrella.
+    
+
+#### 4.1.2 Gestión proactiva mediante el Dashboard
+
+El panel facilita la gestión mediante secciones interactivas que conectan directamente con los módulos operativos:
+
+- **Alertas de Stock:** Se muestra un desglose de productos con niveles críticos (bajo stock o agotados). Incluye un botón de acceso directo a `/inventory` para realizar la gestión detallada de cada producto.
+    
+- **Ventas Recientes:** Presenta un historial de los movimientos más recientes del sistema. Incluye un botón de acceso directo a `/reports`, donde el usuario puede profundizar en el análisis de datos históricos (hasta 60 días de antigüedad).
+
+#### 4.1.3 Gestión de inventario y alertas
+
+El módulo de inventario se encuentra en `/inventory`. Esta sección permite la consulta detallada de existencias, permitiendo filtrar por producto, talla y sucursal. Es la herramienta principal para el control de stock operativo.
+
+**Monitoreo desde el Dashboard:** Para facilitar la toma de decisiones, el sistema centraliza la visibilidad de productos críticos directamente en el **Dashboard (`/dashboard`)**. El sistema analiza automáticamente las existencias y notifica al administrador / gerente  mediante alertas de texto cuando un producto requiere atención, sin necesidad de navegar por todo el catálogo de inventario.
+
+El sistema identifica dos estados críticos:
+
+- **Stock Bajo:** El producto cuenta con 5 unidades o menos, indicando la necesidad de reabastecimiento próximo.
+    
+- **Sin Stock:** El producto tiene 0 unidades, lo que impide la venta del mismo en terminal o tienda online.
+    
+
+**Flujo recomendado de inventario:**
+
+1. **Revisión de Alertas:** Iniciar sesión y observar las alertas de texto en el **Dashboard** para identificar productos con stock bajo o agotados.
+    
+2. **Consulta Detallada:** Ingresar a `/inventory` para verificar la disponibilidad específica por sucursal y variante (talla/color).
+    
+3. **Acciones de Gestión:** Ajustar existencias de forma controlada o gestionar la recepción de nueva mercancía para actualizar el estado del producto en el sistema.
+
+### 4.2 Cajero
+
+El cajero opera desde la terminal de ventas en `/terminal`. Esta interfaz está optimizada para agilizar el registro de transacciones en piso de venta.
+
+#### 4.2.1 Flujo de Venta
+
+El proceso de venta sigue una secuencia lógica diseñada para el control total de la operación:
+
+1. **Selección de Productos:** El cajero dispone de un **buscador en tiempo real** para localizar productos por nombre, así como un **selector de categorías** para filtrar el catálogo rápidamente.
+    
+2. **Configuración de Variante:** Antes de añadir al carrito, es obligatorio seleccionar la **talla deseada**. Una vez seleccionada, el producto se añade al carrito activo.
+    
+3. **Gestión de Carrito:** La interfaz muestra el desglose financiero del pedido, calculando automáticamente:
+    
+    - **Subtotal:** Valor bruto de los artículos.
+        
+    - **IVA:** Impuesto calculado según normativa.
+        
+    - **Descuentos:** Aplicables por porcentaje o monto fijo.
+        
+    - **Total:** El monto final a cobrar al cliente.
+        
+4. **Método de Pago:** Se abre el modal `PaymentModal` para elegir el método de pago (**Simulado**): Efectivo, Tarjeta o Transferencia.
+    
+5. **Ticket y Cierre de Venta:** Tras confirmar el pago, se despliega `TicketPreview`. Al seleccionar la opción de imprimir (que activa el diálogo del sistema "Guardar como PDF" o impresión física), se realiza la **finalización de la venta**:
+    
+    - Se registra la transacción vinculada a la sucursal activa.
+        
+    - Se descuenta automáticamente el inventario del producto.
+        
+    - La venta queda reflejada instantáneamente en el Dashboard y en el módulo de Reportes.
+
+## 5. Manual de Compras para Clientes
+
+_(Insertar aquí: Captura de pantalla del Catálogo Web)_
+
+Los clientes gestionan sus pedidos desde el catálogo (`/catalog`), el carrito (`/cart`) y finalizan en el checkout (`/checkout`). El historial de compras está disponible en `/orders/history` donde pueden consultar el estado actual de su pedido.
+
+## 6. Matriz de Pruebas Funcionales
+
+|**ID**|**Módulo**|**Escenario**|**Resultado Esperado**|**Estado**|
 |---|---|---|---|---|
-| Cliente | `test.customer@gmail.com` | `password123` | `/` | Catálogo, carrito, checkout, cuenta e historial de pedidos |
-| Administrador | `admin@bentenison.mx` | `XZNRXNJTESGAQA` | `/dashboard` | Acceso completo a administración, reportes, inventario, sucursales y usuarios |
-| Gerente | `gerente.centroxalapa@bentenison.mx` | `XZNRXNJTESGAQA` | `/dashboard` | Operación administrativa de la sucursal asignada y consulta de reportes |
-| Cajero | `cajero1.centroxalapa@bentenison.mx` | `XZNRXNJTESGAQA` | `/terminal` | Terminal de ventas e inventario en modo permitido |
+|TP-01|Auth|Login Admin|Redirección a `/dashboard`|**PASSED**|
+|TP-02|Inventario|Alertas (Semáforo)|Indicador visual activo|**PASSED**|
+|TP-03|POS|Venta en terminal|Ticket generado con folio|**PASSED**|
+|TP-04|Shop|Compra autenticada|Registro en `/orders/history`|**PASSED**|
+|TP-05|Seguridad|Acceso no autorizado|Redirección a `/login`|**PASSED**|
 
-Nota: la contraseña de usuarios internos puede cambiar si durante la carga inicial de datos se define una variable `SEED_PASSWORD`. En ese caso, la contraseña válida será la configurada en dicha variable.
+## 7. Solución de Problemas (Troubleshooting)
 
-## 3. Manual de Operación para Staff
+Esta sección concentra incidencias comunes detectadas durante la implementación, carga inicial de datos y despliegue de POS Engine. Su objetivo es facilitar el diagnóstico técnico antes de escalar un incidente.
 
-### 3.1 Administrador y Gerente
+| **Incidente** | **Síntoma observable** | **Causa probable** | **Acción recomendada** |
+|---|---|---|---|
+| Seed lento | La carga inicial de datos tarda demasiado o parece detenerse | Inserciones secuenciales de ventas, inventario o variantes | Mantener la estrategia de inserción por lotes y ejecución controlada con `Promise.all`. Si el entorno es limitado, reducir temporalmente el volumen de ventas de prueba. |
+| Inventario negativo | Una venta o pedido deja existencias por debajo de cero | Validación insuficiente antes de descontar stock | Validar disponibilidad antes de confirmar la venta y conservar el control de stock en memoria antes de persistir cambios en base de datos. |
+| Variables de entorno faltantes | Fallos de conexión, sesiones inválidas o errores durante build/runtime | `DATABASE_URL`, `JWT_SECRET` o `JWT_CUSTOMER_SECRET` no configuradas | Verificar el archivo local de entorno y la configuración de variables en Vercel. En producción, confirmar que las variables existan en el ambiente correcto. |
+| Error de conexión a PostgreSQL | Prisma no logra conectarse a la base de datos | URL inválida, credenciales incorrectas o base de datos no disponible | Revisar `DATABASE_URL`, usuario, contraseña, host, puerto y nombre de base. Confirmar que la instancia PostgreSQL acepte conexiones desde el entorno de despliegue. |
+| Build fallido en Vercel | El despliegue no completa la compilación | Cliente Prisma no generado, dependencias faltantes o secretos incompletos | Confirmar que el proceso de build genere Prisma antes de compilar Next.js. Verificar dependencias como `bcryptjs`, `jose`, `@prisma/client` y las variables requeridas. |
+| Sesión inválida o redirección constante a login | El usuario inicia sesión pero vuelve a `/login` | Token firmado con secreto distinto o cookie antigua | Confirmar que `JWT_SECRET` y `JWT_CUSTOMER_SECRET` sean estables. Si se cambiaron secretos, limpiar cookies del navegador y volver a iniciar sesión. |
+| Fechas incorrectas en reportes | Las ventas aparecen en un día distinto al esperado | Diferencias entre UTC y zona horaria local | Usar las utilidades de fecha del proyecto para normalizar cálculos a horario de México y evitar comparaciones directas sin conversión. |
+| Error al registrar pedidos del catálogo | El checkout no finaliza o no descuenta inventario | Método de entrega incompleto, sucursal no seleccionada o cliente no autenticado | Revisar que el cliente tenga sesión activa, que exista información de entrega y que el carrito conserve sucursal o dirección antes de confirmar el pedido. |
 
-Los perfiles de administrador y gerente acceden al panel operativo desde `/dashboard`. Este panel concentra indicadores de ventas, comportamiento reciente, accesos rápidos y alertas de inventario. El administrador cuenta con permisos globales, mientras que el gerente opera principalmente sobre la información vinculada a su sucursal asignada.
+### 7.1 Preguntas frecuentes técnicas
 
-#### 3.1.1 Consulta de reportes
+**¿Qué revisar primero si la aplicación no inicia localmente?**  
+Verificar que las dependencias estén instaladas, que exista una versión compatible de Node.js, que `DATABASE_URL` apunte a PostgreSQL y que el esquema de Prisma esté sincronizado.
 
-El módulo de reportes se encuentra en `/reports` y permite analizar el desempeño de ventas mediante filtros de tiempo. El sistema ofrece vistas de:
+**¿Qué hacer si Prisma marca error de cliente no generado?**  
+Ejecutar nuevamente la generación del cliente Prisma mediante los scripts del proyecto o reinstalar dependencias para activar el proceso de postinstalación.
 
-- Hoy.
-- Últimos 7 días.
-- Mes actual.
-- Últimos 60 días.
+**¿Por qué separar `JWT_SECRET` y `JWT_CUSTOMER_SECRET`?**  
+Porque el sistema maneja dos contextos de sesión: staff y clientes. Separar secretos reduce el impacto de una filtración y evita mezclar permisos entre módulos internos y tienda online.
 
-La vista de reportes presenta indicadores como total vendido, número de transacciones, ticket promedio, ventas por sucursal, productos más vendidos y tendencia diaria de ventas. La tendencia visual se apoya en el componente gráfico de ventas `SalesChart.tsx`, que facilita la lectura del comportamiento comercial en el periodo seleccionado.
+**¿Qué información debe incluirse al reportar un incidente?**  
+Debe incluirse rol del usuario, correo de prueba utilizado, ruta afectada, fecha y hora, pasos para reproducir el fallo, mensaje de error visible y captura de pantalla si está disponible.
 
-Para consultar reportes:
+## 8. Sección Técnica e Instalación
 
-1. Iniciar sesión como administrador o gerente.
-2. Entrar a `/reports` desde el menú de navegación.
-3. Seleccionar el rango de fechas deseado.
-4. Revisar los indicadores principales y las tablas de detalle.
-5. Usar la información para evaluar desempeño, rotación de productos y comportamiento por sucursal.
+### 8.1 Requisitos Previos Técnicos
 
-#### 3.1.2 Gestión de inventario
+POS Engine requiere un entorno compatible con aplicaciones modernas de Next.js y una base de datos PostgreSQL disponible. Los requisitos se derivan de las dependencias definidas en el `package.json` del proyecto.
 
-El módulo de inventario se encuentra en `/inventory`. Desde esta pantalla se visualiza el stock por producto, talla, variante y sucursal. El administrador puede cambiar de sucursal y modificar existencias; el gerente puede gestionar productos según el alcance de su operación.
+| **Componente** | **Requisito recomendado** | **Uso dentro del sistema** |
+|---|---|---|
+| Node.js | Node.js 20 LTS o superior | Entorno de ejecución para Next.js, scripts de Prisma y herramientas de desarrollo |
+| Next.js | Next.js 15+; el proyecto declara `next` `^16.2.6` | Framework principal con App Router, rutas agrupadas y renderizado de la aplicación |
+| React | React `19.2.4` y React DOM `19.2.4` | Construcción de interfaces interactivas para dashboard, POS, catálogo, carrito y modales |
+| TypeScript | TypeScript `^5.9.3` | Tipado estático del frontend, rutas, acciones y utilidades compartidas |
+| Prisma | Prisma CLI `^5.22.0` y `@prisma/client` `^5.22.0` | ORM para modelado de datos, consultas y sincronización con PostgreSQL |
+| PostgreSQL | Instancia local o remota accesible mediante `DATABASE_URL` | Persistencia de usuarios, clientes, productos, inventario, ventas y pedidos |
+| `pg` y adaptador Prisma | `pg` `^8.20.0` y `@prisma/adapter-pg` `^7.6.0` | Conectividad entre la aplicación, Prisma y PostgreSQL |
+| `bcryptjs` | `^3.0.3` | Hash y verificación de contraseñas de usuarios internos y clientes |
+| `jose` / `jsonwebtoken` | `jose` `^6.2.3` y `jsonwebtoken` `^9.0.3` | Firma, validación y manejo de tokens JWT |
+| Zod | `^3.22.4` | Validación de datos y estructuras de entrada cuando aplica |
+| Tailwind CSS | Tailwind CSS `^4` | Estilos utilitarios y composición visual de la interfaz |
 
-El inventario utiliza un sistema de alertas visuales tipo semáforo para facilitar la toma de decisiones:
+Además, el proyecto utiliza librerías auxiliares como `decimal.js` para precisión numérica, `clsx` y `tailwind-merge` para composición de clases, ESLint para revisión estática, y `ts-node` para ejecutar procesos TypeScript como la carga inicial de datos.
 
-- **Verde:** stock suficiente o situación normal.
-- **Amarillo:** stock bajo, normalmente entre 1 y 5 unidades.
-- **Rojo:** stock crítico o producto sin existencias.
+### 8.2 Arquitectura general
 
-En el dashboard también se muestran alertas de stock para detectar rápidamente productos agotados o con pocas unidades. Esto permite priorizar reabastecimiento, revisar rotación y prevenir ventas no atendidas por falta de disponibilidad.
+Arquitectura: Next.js 15+, Prisma ORM, PostgreSQL, JWT.
 
-Flujo recomendado de inventario:
+### 8.3 Variables de entorno principales:
 
-1. Ingresar a `/inventory`.
-2. Seleccionar la sucursal correspondiente, si el perfil tiene permiso para hacerlo.
-3. Revisar productos, tallas, colores y cantidades disponibles.
-4. Identificar alertas de stock bajo o crítico.
-5. Crear productos o variantes cuando sea necesario.
-6. Ajustar existencias de forma controlada, de acuerdo con los permisos del rol.
+| **Variable**          | **Descripción**             | **Importancia / Uso**                                                                   |
+| --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Conexión a PostgreSQL       | URL por Prisma ORM para conectar el servidor con la base de datos                       |
+| `JWT_SECRET`          | Secreto para empleados      | Llave criptográfica para firmar y validar tokens de administradores, gerentes y cajeros |
+| `JWT_CUSTOMER_SECRET` | Secreto para clientes       | Llave independiente para aislar la seguridad de las sesiones de Clientes                |
+| `SEED_PASSWORD`       | Contraseña inicial del Staff | Permite definir la contraseña base para el seed sin dejarla escrita en el código fuente |
 
-#### 3.1.3 Configuración de sucursales
+![[Attachments/Pasted image 20260601011404.png]]
 
-La administración de sucursales se realiza desde `/stores`. Este módulo permite registrar y editar datos básicos de cada punto de venta, como nombre y ubicación. Las sucursales se relacionan con usuarios internos, inventario, ventas y pedidos, por lo que su configuración debe realizarse cuidadosamente.
+## 9. Glosario
 
-Flujo recomendado:
-
-1. Iniciar sesión con un usuario administrador.
-2. Ingresar a `/stores`.
-3. Revisar el listado de sucursales registradas.
-4. Crear una nueva sucursal cuando se habilite un nuevo punto operativo.
-5. Editar nombre o ubicación cuando existan cambios administrativos.
-6. Validar que los usuarios de tipo gerente o cajero estén asignados a la sucursal correcta.
-
-### 3.2 Cajero
-
-El cajero opera principalmente desde la terminal de ventas ubicada en `/terminal`. Al iniciar sesión, el sistema redirige automáticamente a esta ruta para mantener el flujo de venta enfocado y evitar accesos innecesarios a módulos administrativos.
-
-#### 3.2.1 Flujo de venta en terminal
-
-La terminal está compuesta por un listado de productos y un carrito de venta activo. El cajero puede buscar o seleccionar productos, elegir la talla disponible y agregarlos al carrito.
-
-Flujo de operación:
-
-1. Iniciar sesión con una cuenta de cajero.
-2. Acceder a `/terminal`.
-3. Seleccionar un producto desde el listado.
-4. Elegir talla o variante disponible.
-5. Agregar el producto al carrito.
-6. Ajustar cantidades desde el carrito, si aplica.
-7. Revisar subtotal, IVA, descuentos y total.
-8. Presionar la opción de pago.
-
-El carrito permite cancelar la venta activa, quitar productos individuales, aumentar o disminuir cantidades, y aplicar descuentos por porcentaje o monto fijo antes de procesar el pago.
-
-#### 3.2.2 Modal de pago
-
-Al presionar la opción de pago, el sistema abre un modal de cobro. En esta ventana se muestra el total a cobrar y se selecciona el método de pago.
-
-Los métodos disponibles son:
-
-- Efectivo.
-- Tarjeta.
-- Transferencia.
-
-Después de seleccionar el método de pago, el cajero confirma la venta. El sistema genera la información de la operación y abre el ticket correspondiente.
-
-#### 3.2.3 Generación de tickets
-
-Al confirmar una venta, POS Engine muestra un ticket con los datos principales de la transacción: folio, productos vendidos, cantidades, subtotal, IVA, descuento, total, método de pago y sucursal operativa.
-
-El ticket puede imprimirse desde el modal correspondiente. Una vez cerrado el ticket, el carrito se limpia y la terminal queda lista para registrar una nueva venta.
-
-## 4. Manual de Compras para Clientes
-
-### 4.1 Navegación del catálogo
-
-Los clientes acceden al catálogo desde la página principal `/` o desde `/catalog`, según la configuración de navegación. En esta sección pueden revisar productos disponibles, consultar precios, filtrar resultados y seleccionar variantes como talla o sucursal con disponibilidad.
-
-Flujo de navegación:
-
-1. Entrar al catálogo web.
-2. Buscar o filtrar productos.
-3. Revisar los datos del producto y disponibilidad.
-4. Seleccionar talla y sucursal, cuando aplique.
-5. Agregar el producto al carrito.
-
-### 4.2 Carrito de compras
-
-El carrito web se encuentra en `/cart`. Desde esta pantalla el cliente puede revisar los productos seleccionados, modificar cantidades y elegir el método de entrega.
-
-El sistema contempla dos modalidades operativas:
-
-- **Recoger en sucursal:** el cliente selecciona la sucursal donde recogerá el pedido.
-- **Entrega a domicilio:** el cliente proporciona la dirección requerida para el envío.
-
-Antes de continuar, el cliente debe verificar productos, cantidades, sucursal o dirección, subtotal, IVA y total estimado.
-
-### 4.3 Proceso de checkout
-
-El checkout se realiza en `/checkout`. Para finalizar una compra, el cliente debe estar autenticado. Si intenta continuar sin sesión activa, el sistema lo redirige al inicio de sesión y posteriormente regresa al flujo de compra.
-
-Flujo de checkout:
-
-1. Confirmar productos en el carrito.
-2. Seleccionar método de entrega.
-3. Ingresar o confirmar datos personales.
-4. Validar dirección o sucursal de recolección.
-5. Seleccionar método de pago disponible.
-6. Confirmar el pedido.
-7. Esperar la confirmación y el folio de compra.
-
-Al finalizar, el sistema registra el pedido, descuenta inventario de la sucursal correspondiente y redirige al cliente a la pantalla de confirmación.
-
-### 4.4 Historial de pedidos
-
-El historial de pedidos se consulta en `/orders/history`. Esta sección requiere sesión activa de cliente y muestra los pedidos realizados por la cuenta autenticada.
-
-En el historial se puede revisar:
-
-- Folio del pedido.
-- Fecha de creación.
-- Productos comprados.
-- Cantidades.
-- Total pagado.
-- Estado del pedido.
-
-Los estados permiten dar seguimiento básico al avance de la compra, por ejemplo: pendiente, pagado, enviado, entregado o cancelado.
-
-## 5. Sección Técnica: Manual de Instalación
-
-### 5.1 Arquitectura general
-
-POS Engine está construido con una arquitectura web moderna basada en:
-
-- **Next.js 15+ con App Router:** estructura por rutas funcionales para administración, POS, tienda y autenticación. En el proyecto actual se utiliza una versión superior de Next.js.
-- **React:** construcción de interfaces interactivas para terminal, carrito, modales, reportes y paneles administrativos.
-- **Prisma ORM:** capa de acceso a datos, definición de modelos y operaciones sobre la base de datos.
-- **PostgreSQL:** base de datos relacional para usuarios, clientes, productos, variantes, inventario, ventas y pedidos.
-- **JWT:** autenticación mediante tokens firmados para separar sesiones de empleados y clientes.
-- **Vercel:** plataforma de despliegue para la aplicación web.
-
-La estructura del sistema se organiza por grupos de rutas:
-
-- `(admin)`: dashboard, inventario, sucursales, usuarios, productos, pedidos y reportes.
-- `(pos)`: terminal de ventas y operación presencial.
-- `(shop)`: catálogo online, carrito, checkout, cuenta e historial de pedidos.
-- `(auth)`: inicio de sesión y registro de clientes.
-- `lib/`: utilidades compartidas de autenticación, secretos, fechas, Prisma y funciones de apoyo.
-
-### 5.2 Variables de entorno requeridas
-
-Para ejecutar el sistema correctamente se requieren variables de entorno. Las principales son:
-
-| Variable | Uso |
+| **Término** | **Definición** |
 |---|---|
-| `DATABASE_URL` | Cadena de conexión principal a PostgreSQL usada por Prisma y la aplicación |
-| `JWT_SECRET` | Secreto para firmar y validar tokens de usuarios internos: administrador, gerente y cajero |
-| `JWT_CUSTOMER_SECRET` | Secreto independiente para firmar y validar tokens de clientes |
-| `SEED_PASSWORD` | Variable opcional para definir la contraseña inicial de usuarios internos en datos de prueba |
-| `POSTGRES_USER` | Usuario de PostgreSQL en entorno local |
-| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL en entorno local |
-| `POSTGRES_DB` | Nombre de la base de datos en entorno local |
+| POS | Siglas de Point of Sale o punto de venta. En POS Engine se refiere a la terminal utilizada por cajeros para registrar ventas físicas. |
+| JWT | JSON Web Token. Formato de token firmado que permite validar sesiones de usuarios internos y clientes sin almacenar sesión en servidor tradicional. |
+| Prisma | Herramienta de acceso a datos utilizada para definir el modelo de base de datos y ejecutar consultas contra PostgreSQL. |
+| ORM | Object-Relational Mapping. Técnica que permite interactuar con una base de datos relacional mediante modelos y objetos de aplicación. |
+| App Router | Sistema de enrutamiento moderno de Next.js basado en la carpeta `app`, usado para organizar rutas, layouts y grupos funcionales. |
+| Vercel | Plataforma de despliegue cloud utilizada para publicar la aplicación Next.js y administrar variables de entorno de producción. |
+| PostgreSQL | Sistema de base de datos relacional donde se almacenan productos, inventario, ventas, pedidos, usuarios y clientes. |
+| Seed | Proceso de carga inicial de datos de prueba o datos base, como usuarios, sucursales, productos e inventario. |
 
-Se recomienda que `JWT_SECRET` y `JWT_CUSTOMER_SECRET` sean valores distintos, largos y privados. Esto refuerza la separación entre sesiones del personal interno y sesiones de clientes.
+## 10. Contacto
 
-### 5.3 Instalación local resumida
+El responsable técnico y operativo del sistema es el **Equipo de Desarrollo ITSX**.
 
-Para una instalación local, el proceso general consiste en:
+Los reportes de incidentes, solicitudes de soporte o requerimientos de mejora deben canalizarse a través del medio institucional definido por el proyecto. Para agilizar la atención, cada reporte debe incluir:
 
-1. Clonar el repositorio del proyecto.
-2. Instalar dependencias del entorno Node.js.
-3. Configurar las variables de entorno en el archivo local correspondiente.
-4. Preparar la base de datos PostgreSQL.
-5. Sincronizar el esquema de Prisma con la base de datos.
-6. Ejecutar la carga inicial de datos de prueba.
-7. Levantar el servidor de desarrollo.
-8. Acceder a la aplicación desde el navegador.
+- Nombre o rol del usuario afectado.
+    
+- Ruta o módulo donde ocurrió el incidente.
+    
+- Descripción breve del problema.
+    
+- Pasos para reproducirlo.
+    
+- Fecha y hora aproximada.
+    
+- Evidencia visual, cuando sea posible.
 
-Durante la carga inicial se crean sucursales, productos, variantes, inventario, ventas de ejemplo, usuarios internos y el cliente de prueba.
+El Equipo de Desarrollo ITSX será responsable de clasificar el incidente, validar su severidad, reproducir el escenario y proponer la corrección o mejora correspondiente.
 
-### 5.4 Despliegue en Vercel
+## 11. Conclusiones y Mejoras Futuras
 
-El despliegue se realizó en Vercel conectando el repositorio del proyecto a la plataforma. En la configuración del proyecto se registraron las variables de entorno necesarias, incluyendo la cadena de conexión a PostgreSQL y los secretos JWT.
+### 11.1 Conclusiones
 
-El proceso de construcción genera el cliente de Prisma antes de compilar la aplicación Next.js, lo que permite que el entorno de producción tenga disponible la capa de acceso a datos. Una vez completado el build, Vercel publica la aplicación y gestiona el hosting, las rutas y la entrega del frontend.
+POS Engine centraliza con éxito la operación comercial de un negocio con múltiples canales de venta. La integración entre la terminal física, el catálogo web, el control de inventario en tiempo real, los reportes analíticos y la autenticación basada en roles, permite una gestión operativa ordenada, trazable y eficiente. El sistema elimina la dispersión de información y fortalece la toma de decisiones basada en datos, facilitando el control administrativo desde cualquier ubicación mediante su despliegue en la nube.
 
-URL de despliegue registrada:
+### 11.2 Mejoras Futuras y Evolución del Sistema
 
-`https://next-pos-engine-o60cdcj7j-axel-yahir-s-projects.vercel.app`
+Con el fin de consolidar a POS Engine como una solución integral de gestión comercial, se han identificado las siguientes áreas de evolución prioritaria:
 
-## 6. Conclusiones y Mejoras Futuras
+- **Gestión Logística Integral:** Implementación de un módulo avanzado para el ciclo de vida del pedido, incluyendo:
+    
+    - **Seguimiento de Envíos:** Gestión de estados en tiempo real (pendiente, preparado, en tránsito, entregado).
+        
+    - **Recolección en Tienda (Click & Collect):** Flujo optimizado para el apartado de mercancía y validación de entrega mediante código QR.
+        
+    - **Gestión de Pagos:** Integración con pasarelas de pago externas y validación automatizada de transacciones.
+        
+- **Sistema de Apartados:** Funcionalidad para gestionar reservas de productos con abonos parciales, integrando el control de saldos pendientes en el historial de cuenta del cliente.
+    
+- **Auditoría y Trazabilidad:** Implementación de un módulo de logs detallado para registrar todas las modificaciones realizadas en inventarios y movimientos críticos de usuarios.
+    
+- **Analítica Avanzada:** Desarrollo de un panel de analítica estratégica con comparativas de rendimiento entre sucursales y predicción de demanda de productos.
+    
+- **Herramientas de Exportación:** Funcionalidad para la exportación de reportes operativos en formatos estándar (CSV, PDF) para auditorías externas y contabilidad.
 
-POS Engine centraliza la operación comercial de una tienda con múltiples canales de venta. La integración entre terminal física, catálogo web, inventario por sucursal, reportes y autenticación por roles permite una operación más ordenada, trazable y eficiente.
+## 12. Referencias (APA 7)
 
-El proyecto aporta valor al reducir la dispersión de información entre ventas, existencias y pedidos. Además, facilita la toma de decisiones mediante reportes de ventas, alertas de stock y control de usuarios internos.
-
-Como mejoras futuras se proponen:
-
-- Exportación de reportes a CSV para análisis externo.
-- Filtros avanzados por producto, sucursal, vendedor y periodo personalizado.
-- Gestión completa de devoluciones y cambios.
-- Integración con pasarelas de pago en línea.
-- Notificaciones automáticas de stock bajo.
-- Módulo de auditoría para registrar cambios en inventario y usuarios.
-- Panel de analítica con comparativas entre sucursales.
-
-Con estas mejoras, POS Engine podría evolucionar hacia una plataforma más completa de administración comercial, capaz de cubrir tanto necesidades operativas diarias como análisis estratégico de ventas.
+1. Next.js. (2026). _App Router Documentation_. Recuperado de [https://nextjs.org/docs](https://nextjs.org/docs)
+    
+2. Prisma. (2026). _Prisma ORM: Documentation_. Recuperado de [https://www.prisma.io/docs](https://www.prisma.io/docs)
+    
+3. Vercel. (2026). _Deployment and Hosting Documentation_. Recuperado de [https://vercel.com/docs](https://vercel.com/docs)
+    
+4. OpenJS Foundation. (2026). _Node.js API Reference_. Recuperado de [https://nodejs.org/docs](https://www.google.com/search?q=https://nodejs.org/docs)
+    
+5. PostgreSQL Global Development Group. (2026). _PostgreSQL Documentation_. Recuperado de [https://www.postgresql.org/docs](https://gemini.google.com/app/94c723303b323aae)

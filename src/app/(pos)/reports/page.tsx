@@ -7,10 +7,10 @@ import { formatCurrency } from "../../../lib/utils";
 
 export const revalidate = 3600;
 
-type DateRangeKey = "today" | "week" | "month" | "last60";
+type DateRangeKey = "today" | "week" | "month" | "last30" | "last60";
 
 // --------------------------------------------------------------
-// Zona horaria México (UTC-6)
+// Funciones de zona horaria México
 // --------------------------------------------------------------
 function getMexicoOffsetForUTCDate(utcDate: Date): number {
   const formatter = new Intl.DateTimeFormat("en", {
@@ -20,43 +20,87 @@ function getMexicoOffsetForUTCDate(utcDate: Date): number {
   });
   const hourInMexico = parseInt(formatter.format(utcDate), 10);
   const utcHour = utcDate.getUTCHours();
-  return hourInMexico - utcHour; // normalmente -6
+  return hourInMexico - utcHour;
 }
 
-function getUTCRangeForMexicoDate(mexicoDate: Date) {
+function getCurrentMexicoComponents(): { year: number; month: number; day: number } {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  const [year, month, day] = formatter.format(mexicoDate).split("-").map(Number);
-  const noonUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const [year, month, day] = formatter.format(new Date()).split("-").map(Number);
+  return { year, month, day };
+}
+
+function getUTCRangeForMexicoDateComponents(year: number, month: number, day: number) {
+  const noonUTC = new Date(Date.UTC(year, month, day, 12, 0, 0));
   const offsetHours = getMexicoOffsetForUTCDate(noonUTC);
-  const startUTC = new Date(Date.UTC(year, month - 1, day, -offsetHours, 0, 0));
-  const endUTC = new Date(Date.UTC(year, month - 1, day, -offsetHours + 24, 0, 0));
+  const startUTC = new Date(Date.UTC(year, month, day, -offsetHours, 0, 0));
+  const endUTC = new Date(Date.UTC(year, month, day, -offsetHours + 24, 0, 0));
   endUTC.setUTCMilliseconds(-1);
   return { startUTC, endUTC };
 }
 
 function getDateRangeUTC(option: DateRangeKey) {
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const [currentYear, currentMonth, currentDay] = formatter.format(now).split("-").map(Number);
-  let startMexico = new Date(currentYear, currentMonth - 1, currentDay);
-  const endMexico = new Date(currentYear, currentMonth - 1, currentDay);
+  const { year, month, day } = getCurrentMexicoComponents();
+  let startYear = year;
+  let startMonth = month;
+  let startDay = day;
+  const endYear = year;
+  const endMonth = month;
+  let endDay = day;
 
-  if (option === "week") startMexico.setDate(currentDay - 6);
-  else if (option === "month") startMexico = new Date(currentYear, currentMonth - 1, 1);
-  else if (option === "last60") startMexico.setDate(currentDay - 59);
+  if (option === "today") {
+    // mismo día
+  } else if (option === "week") {
+    const startDate = new Date(Date.UTC(year, month - 1, day - 6));
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const [y, m, d] = formatter.format(startDate).split("-").map(Number);
+    startYear = y;
+    startMonth = m;
+    startDay = d;
+  } else if (option === "month") {
+    startDay = 1;
+    endDay = new Date(year, month, 0).getDate(); // último día del mes
+  } else if (option === "last30") {
+    const startDate = new Date(Date.UTC(year, month - 1, day - 29));
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const [y, m, d] = formatter.format(startDate).split("-").map(Number);
+    startYear = y;
+    startMonth = m;
+    startDay = d;
+  } else if (option === "last60") {
+    const startDate = new Date(Date.UTC(year, month - 1, day - 59));
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const [y, m, d] = formatter.format(startDate).split("-").map(Number);
+    startYear = y;
+    startMonth = m;
+    startDay = d;
+  }
 
-  const { startUTC } = getUTCRangeForMexicoDate(startMexico);
-  const { endUTC } = getUTCRangeForMexicoDate(endMexico);
+  const { startUTC } = getUTCRangeForMexicoDateComponents(startYear, startMonth - 1, startDay);
+  const { endUTC } = getUTCRangeForMexicoDateComponents(endYear, endMonth - 1, endDay);
+
+  console.log(`[Reports] getDateRangeUTC(${option}) -> startUTC: ${startUTC.toISOString()}, endUTC: ${endUTC.toISOString()}`);
+  console.log(`[Reports] México: start día ${startDay}/${startMonth}/${startYear}, end día ${endDay}/${endMonth}/${endYear}`);
+
   return { startUTC, endUTC };
 }
 
@@ -74,6 +118,7 @@ const rangeOptions: Array<{ key: DateRangeKey; label: string }> = [
   { key: "today", label: "Hoy" },
   { key: "week", label: "Últimos 7 días" },
   { key: "month", label: "Este mes" },
+  { key: "last30", label: "Últimos 30 días" },
   { key: "last60", label: "Últimos 60 días" },
 ];
 
@@ -82,7 +127,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const { range = "last60" } = await searchParams;
+  const { range = "last30" } = await searchParams;
   const selectedRange = range as DateRangeKey;
 
   const cookieStore = await cookies();
@@ -95,7 +140,10 @@ export default async function ReportsPage({
   const { startUTC, endUTC } = getDateRangeUTC(selectedRange);
   const dateFilter = { createdAt: { gte: startUTC, lte: endUTC } };
 
-  // 1. Totales
+  console.log(`[Reports] Rango seleccionado: ${selectedRange}`);
+  console.log(`[Reports] Filtro where: createdAt entre ${startUTC.toISOString()} y ${endUTC.toISOString()}`);
+
+  // Totales
   const totalAgg = await prisma.sale.aggregate({
     where: dateFilter,
     _sum: { total: true },
@@ -105,7 +153,7 @@ export default async function ReportsPage({
   const totalTransactions = totalAgg._count;
   const averageTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
-  // 2. Ventas por sucursal
+  // Ventas por sucursal
   const salesByStoreRaw = await prisma.sale.groupBy({
     by: ["storeId"],
     where: dateFilter,
@@ -124,7 +172,7 @@ export default async function ReportsPage({
     transactions: s._count,
   }));
 
-  // 3. Top productos
+  // Top productos
   const topVariants = await prisma.saleItem.groupBy({
     by: ["variantId"],
     where: { sale: dateFilter },
@@ -155,28 +203,24 @@ export default async function ReportsPage({
     }
   }
 
-  // 4. Tendencia diaria (corregida)
+  // Tendencia diaria
   const allSales = await prisma.sale.findMany({
     where: dateFilter,
     select: { total: true, createdAt: true },
   });
-
   const trendMap = new Map<string, number>();
   for (const sale of allSales) {
     const dateKey = formatQueryDateMexico(sale.createdAt);
     trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + Number(sale.total));
   }
 
-  // Generar la lista de días en México (desde startUTC hasta endUTC, inclusive)
   const salesTrend: { date: string; total: number }[] = [];
-  const currentMexico = new Date(startUTC);
-  const endMexico = new Date(endUTC);
-  // Avanzamos en el tiempo UTC pero tomamos la fecha en México cada vez
-  while (currentMexico <= endMexico) {
-    const key = formatQueryDateMexico(currentMexico);
+  const currentDate = new Date(startUTC);
+  const endDate = new Date(endUTC);
+  while (currentDate <= endDate) {
+    const key = formatQueryDateMexico(currentDate);
     salesTrend.push({ date: key, total: trendMap.get(key) || 0 });
-    // Sumar 24 horas en UTC para pasar al siguiente día
-    currentMexico.setUTCDate(currentMexico.getUTCDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   const filteredSalesTrend = salesTrend.filter(point => point.total > 0);
