@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma';
-import { hashPassword, generateCustomerToken } from '../../../../../lib/customer-auth-utils';
+import { hashPassword } from '../../../../../lib/auth-utils';           // ✅ importación correcta
+import { generateCustomerToken } from '../../../../../lib/customer-auth-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,9 +30,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const token = generateCustomerToken(customer.id, customer.email);
+    const token = await generateCustomerToken(customer.id, customer.email); // ✅ agregar await
     const response = NextResponse.json({ success: true, customer: { id: customer.id, name: customer.name, email: customer.email } });
-    response.cookies.set('bt_customer_token', token, { httpOnly: true, path: '/', maxAge: 604800, sameSite: 'lax' });
+    response.cookies.set('bt_customer_token', token, {
+      httpOnly: true,
+      path: '/',
+      maxAge: 604800,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
     return response;
   } catch (error) {
     console.error('Registration error:', error);
