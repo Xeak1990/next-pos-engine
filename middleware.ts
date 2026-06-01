@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'; // ⬅️ Agrega esto
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyAuthToken } from "./src/lib/token-utils";
 import { verifyCustomerToken } from "./src/lib/customer-auth-utils";
