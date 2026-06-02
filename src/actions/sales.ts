@@ -58,8 +58,13 @@ export async function createSale(data: SaleInput) {
       return sale;
     });
 
-    revalidatePath("/(shop)");
-    revalidatePath("/(admin)/inventory");
+    // REVALIDACIONES DE CACHÉ
+    revalidatePath("/(shop)", "layout");
+    revalidatePath("/(admin)/inventory", "page");
+    // Agregamos las rutas de tu terminal para refrescar el stock
+    revalidatePath("/(pos)/terminal", "page");
+    revalidatePath("/terminal", "page");
+
     console.log("[createSale] Venta finalizada con éxito, ID:", result.id);
     return { success: true, saleId: result.id };
   } catch (error: unknown) {

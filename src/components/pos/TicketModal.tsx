@@ -1,27 +1,31 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import TicketView from "./TicketView";
+import { createSale } from "../../actions/sales";
 
 interface TicketModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSaleSuccess: () => void; // limpia carrito y refresca
   orderData: {
-    folio: string;
     items: {
+      variantId: string;
       name: string;
       size: string;
       price: number;
       quantity: number;
+      stockAvailable: number;
     }[];
     subtotal: number;
     iva: number;
-    discount?: number;
+    discount: number;
     total: number;
     paymentMethod: string;
     storeLocation: string;
   };
+  storeId: string;
 }
 
 function TicketModalPortal({ children }: { children: ReactNode }) {
@@ -51,17 +55,20 @@ function TicketModalPortal({ children }: { children: ReactNode }) {
   );
 }
 
-export default function TicketModal({ isOpen, onClose, orderData }: TicketModalProps) {
+export default function TicketModal({ isOpen, onClose, onSaleSuccess, orderData, storeId }: TicketModalProps) {
   const ticketContainerRef = useRef<HTMLDivElement>(null);
   const currentPrintCloneRef = useRef<HTMLDivElement | null>(null);
 
-  // Función para eliminar cualquier clon anterior
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saleCompleted, setSaleCompleted] = useState(false);
+  const [saleFolio, setSaleFolio] = useState<string | null>(null);
+
   const removePreviousPrintClone = () => {
     if (currentPrintCloneRef.current && document.body.contains(currentPrintCloneRef.current)) {
       document.body.removeChild(currentPrintCloneRef.current);
       currentPrintCloneRef.current = null;
     }
-    // Por si hay algún clon huérfano (con clase ticket-print-area)
     const existingClones = document.querySelectorAll('.ticket-print-area');
     existingClones.forEach(clone => {
       if (clone.parentNode) clone.parentNode.removeChild(clone);
@@ -72,31 +79,51 @@ export default function TicketModal({ isOpen, onClose, orderData }: TicketModalP
     const originalTicket = ticketContainerRef.current;
     if (!originalTicket) return;
 
-    // Limpiar cualquier clon previo antes de crear uno nuevo
     removePreviousPrintClone();
-
-    // Clonar el ticket (incluyendo todos los estilos y clases)
     const ticketClone = originalTicket.cloneNode(true) as HTMLDivElement;
-
-    // Añadir clase que usamos para los estilos de impresión
     ticketClone.classList.add("ticket-print-area");
-
-    // Insertar el clon al final del body
     document.body.appendChild(ticketClone);
     currentPrintCloneRef.current = ticketClone;
 
-    // Forzar reflow
-    void ticketClone.offsetHeight;
-
-    // Guardar referencia para el evento afterprint
     const onPrintDone = () => {
       removePreviousPrintClone();
       window.removeEventListener('afterprint', onPrintDone);
     };
 
-    // Imprimir (sin abrir ventana nueva)
     window.addEventListener('afterprint', onPrintDone);
     window.print();
+  };
+
+  const handleConfirmSale = async () => {
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const saleData = {
+        storeId,
+        items: orderData.items.map(item => ({
+          variantId: item.variantId,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      };
+      const result = await createSale(saleData);
+      if (!result.success) {
+        throw new Error(result.error || "Error desconocido");
+      }
+      const folioReal = result.saleId!.slice(-8).toUpperCase();
+      setSaleFolio(`VTA-${folioReal}`);
+      setSaleCompleted(true);
+      onSaleSuccess(); // limpia carrito y notifica a PosPage para refrescar
+    } catch (err: unknown) {
+      let errorMessage = "No se pudo completar la venta. Intenta de nuevo.";
+      if (err instanceof Error) errorMessage = err.message;
+      else if (typeof err === "string") errorMessage = err;
+      else if (err && typeof err === "object" && "message" in err && typeof err.message === "string")
+        errorMessage = err.message;
+      setError(errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -104,6 +131,18 @@ export default function TicketModal({ isOpen, onClose, orderData }: TicketModalP
   const MODAL_WIDTH_PX = 450;
   const MODAL_HEIGHT_PX = 600;
   const BUTTON_WIDTH_PX = 120;
+
+  // Datos para TicketView (folio temporal o real)
+  const ticketViewData = {
+    folio: saleCompleted ? saleFolio! : "PENDIENTE",
+    items: orderData.items.map(i => ({ name: i.name, size: i.size, price: i.price, quantity: i.quantity })),
+    subtotal: orderData.subtotal,
+    iva: orderData.iva,
+    discount: orderData.discount,
+    total: orderData.total,
+    paymentMethod: orderData.paymentMethod,
+    storeLocation: orderData.storeLocation,
+  };
 
   return (
     <TicketModalPortal>
@@ -114,34 +153,55 @@ export default function TicketModal({ isOpen, onClose, orderData }: TicketModalP
         <div className="flex-1 overflow-auto p-4">
           <div className="flex items-center justify-center min-h-full">
             <div ref={ticketContainerRef}>
-              <TicketView
-                folio={orderData.folio}
-                items={orderData.items}
-                subtotal={orderData.subtotal}
-                iva={orderData.iva}
-                discount={orderData.discount || 0}
-                total={orderData.total}
-                paymentMethod={orderData.paymentMethod}
-                storeLocation={orderData.storeLocation}
-              />
+              <TicketView {...ticketViewData} />
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="text-red-400 text-sm text-center bg-red-900/30 mx-4 mb-2 p-2 rounded">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-center gap-[10px] my-[10px]">
-          <button
-            onClick={onClose}
-            className="bt-button-ghost rounded-[12px] text-xs"
-            style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
-          >
-            Cerrar
-          </button>
-          <button
-            onClick={handlePrint}
-            className="bt-button-primary rounded-[12px] text-xs"
-            style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
-          >
-            Imprimir Ticket
-          </button>
+          {!saleCompleted ? (
+            <>
+              <button
+                onClick={onClose}
+                disabled={isProcessing}
+                className="bt-button-ghost rounded-[12px] text-xs"
+                style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSale}
+                disabled={isProcessing}
+                className="bt-button-primary rounded-[12px] text-xs"
+                style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
+              >
+                {isProcessing ? "Procesando..." : "Confirmar Venta"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="bt-button-ghost rounded-[12px] text-xs"
+                style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={handlePrint}
+                className="bt-button-primary rounded-[12px] text-xs"
+                style={{ fontFamily: "Arial, sans-serif", width: `${BUTTON_WIDTH_PX}px`, padding: "0.75rem 0" }}
+              >
+                Imprimir Ticket
+              </button>
+            </>
+          )}
         </div>
       </div>
     </TicketModalPortal>

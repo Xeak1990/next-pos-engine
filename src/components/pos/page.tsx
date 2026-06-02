@@ -17,12 +17,13 @@ export default function PosPage({
 }: PosPageProps) {
   const [products, setProducts] = useState<PosProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     async function loadProducts() {
       setIsLoading(true);
       try {
-        const response = await fetch("/api/products");
+        const response = await fetch(`/api/products?t=${Date.now()}`);
         const data = await response.json();
         setProducts(Array.isArray(data) ? data : []);
         console.log("[PosPage] Productos cargados:", data.length);
@@ -37,7 +38,11 @@ export default function PosPage({
       }
     }
     loadProducts();
-  }, []);
+  }, [reloadKey]); // Recarga cuando reloadKey cambia
+
+  const handleSaleComplete = () => {
+    setReloadKey((prev) => prev + 1); // Fuerza recarga de productos
+  };
 
   return (
     <div className="text-white h-screen flex flex-col !overflow-hidden m-[5px]">
@@ -54,6 +59,7 @@ export default function PosPage({
           <CartPanel
             storeLocation={initialStoreLocation ?? initialStoreName ?? "Operación Global"}
             storeId={storeId ?? ""}
+            onSaleComplete={handleSaleComplete}
           />
         </aside>
       </div>

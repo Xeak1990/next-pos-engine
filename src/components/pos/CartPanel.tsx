@@ -5,7 +5,6 @@ import { formatCurrency } from "../../lib/utils";
 import { useCart } from "../../lib/CartContext";
 import PaymentModal from "./PaymentModal";
 import TicketModal from "./TicketModal";
-import { createSale } from "../../actions/sales";
 
 interface CartItemSummary {
   variantId: string;
@@ -16,8 +15,8 @@ interface CartItemSummary {
   stockAvailable: number;
 }
 
+// OrderSummary ya no incluye folio (se genera después de la confirmación)
 interface OrderSummary {
-  folio: string;
   items: CartItemSummary[];
   subtotal: number;
   iva: number;
@@ -30,13 +29,14 @@ interface OrderSummary {
 interface CartPanelProps {
   storeLocation: string;
   storeId: string;
+  onSaleComplete?: () => void; // opcional para mantener compatibilidad
 }
 
-export default function CartPanel({ storeLocation, storeId }: CartPanelProps) {
+export default function CartPanel({ storeLocation, storeId, onSaleComplete }: CartPanelProps) {
   const { items, addItem, removeOne, removeItem, clearCart } = useCart();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
-  const [lastOrder, setLastOrder] = useState<OrderSummary | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<OrderSummary | null>(null);
   const [discountValue, setDiscountValue] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,32 +60,17 @@ export default function CartPanel({ storeLocation, storeId }: CartPanelProps) {
 
   const total = baseForDiscount - discountAmount;
 
-  const handleProcessPayment = async (method: string) => {
-    if (isProcessing) return;
-    setIsProcessing(true);
+  // Limpia carrito y notifica al padre después de venta exitosa
+  const handleSaleSuccess = () => {
+    clearCart();
+    setDiscountValue("");
+    setDiscountType("percentage");
+    if (onSaleComplete) onSaleComplete();
+  };
 
-    const saleData = {
-      storeId,
-      items: items.map(item => ({
-        variantId: item.variantId,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-    };
-
-    console.log("[CartPanel] Enviando venta:", saleData);
-    const result = await createSale(saleData);
-
-    if (!result.success) {
-      alert(`Error al procesar la venta: ${result.error}`);
-      setIsProcessing(false);
-      return;
-    }
-
-    // result.saleId existe porque result.success === true
-    const folioReal = result.saleId!.slice(-8).toUpperCase();
+  // Al seleccionar método de pago, solo preparamos el pedido y abrimos el modal (sin guardar)
+  const handleProcessPayment = (method: string) => {
     const orderData: OrderSummary = {
-      folio: `VTA-${folioReal}`,
       items,
       subtotal,
       iva,
@@ -94,10 +79,14 @@ export default function CartPanel({ storeLocation, storeId }: CartPanelProps) {
       paymentMethod: method,
       storeLocation,
     };
-    setLastOrder(orderData);
+    setPendingOrder(orderData);
     setIsPaymentOpen(false);
     setIsTicketOpen(true);
-    setIsProcessing(false);
+  };
+
+  const handleTicketClose = () => {
+    setIsTicketOpen(false);
+    setPendingOrder(null);
   };
 
   return (
@@ -262,14 +251,13 @@ export default function CartPanel({ storeLocation, storeId }: CartPanelProps) {
         onCancel={() => setIsPaymentOpen(false)}
       />
 
-      {lastOrder && (
+      {pendingOrder && (
         <TicketModal
           isOpen={isTicketOpen}
-          onClose={() => {
-            setIsTicketOpen(false);
-            clearCart();
-          }}
-          orderData={lastOrder}
+          onClose={handleTicketClose}
+          onSaleSuccess={handleSaleSuccess}
+          orderData={pendingOrder}
+          storeId={storeId}
         />
       )}
     </section>
