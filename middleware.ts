@@ -2,8 +2,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = new Set(["/login", "/catalog"]);
-const CUSTOMER_PATHS = new Set(["/account", "/orders/history", "/cart"]);
+const PUBLIC_PATHS = new Set(["/login", "/catalog", "/register"]);
+const CUSTOMER_PATHS = new Set(["/account", "/orders/history", "/cart", "/checkout", "/confirmation"]);
 const CASHIER_ALLOWED = new Set(["/terminal", "/inventory"]);
 const CASHIER_BLOCKED = new Set(["/admin", "/reports", "/dashboard", "/users"]);
 const CUSTOMER_PREFIXES = ["/account/", "/orders/history/"];
