@@ -22,6 +22,7 @@ export default function NavbarShop() {
     setIsEmployee(hasEmployeeCookie);
 
     if (hasEmployeeCookie) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(null);
       return;
     }
@@ -34,7 +35,6 @@ export default function NavbarShop() {
         });
         if (res.ok) {
           const data = await res.json();
-          // El endpoint devuelve directamente los datos del cliente (id, name, email...)
           if (data?.name) {
             setUser({ name: data.name, email: data.email });
           } else {
@@ -60,7 +60,7 @@ export default function NavbarShop() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     await fetch("/api/auth/customer/logout", { method: "POST" });
     clearCart();
     setUser(null);
@@ -88,20 +88,8 @@ export default function NavbarShop() {
               placeholder="Buscar productos..."
               className="w-full rounded-full border border-[#333333] bg-[#111111] py-2 pl-10 pr-4 text-sm text-white placeholder:text-[#6B7280] focus:border-[#E8621A] focus:outline-none"
             />
-            <svg
-              width="16"
-              height="16"
-              className="absolute left-3 top-2.5 text-[#6B7280]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
+            <svg width="16" height="16" className="absolute left-3 top-2.5 text-[#6B7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
         </form>
@@ -109,7 +97,6 @@ export default function NavbarShop() {
         <div className="flex items-center gap-4">
           {showUserButton && (
             <div className="relative">
-              {/* BOTÓN DE PERFIL: Tamaño 9x9, hover naranja, focus ring */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1A1A1A] text-sm font-medium text-white transition-all hover:bg-[#E8621A] focus:outline-none focus:ring-2 focus:ring-[#E8621A]/50"
@@ -118,58 +105,33 @@ export default function NavbarShop() {
                 {user ? (
                   <span className="uppercase font-bold">{userInitial}</span>
                 ) : (
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 )}
               </button>
               {dropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-                  {/* MENÚ DESPLEGABLE: ancho 56, bordes redondeados, sombra, fondo oscuro */}
                   <div className="absolute right-0 mt-2 w-56 rounded-xl border border-[#333] bg-[#1A1A1A] shadow-xl z-50 overflow-hidden">
                     {user ? (
                       <>
-                        {/* CABECERA CON NOMBRE Y EMAIL */}
                         <div className="px-4 py-3 text-sm text-white border-b border-[#333] bg-[#111111]">
                           <p className="font-semibold">Hola, {user.name.split(" ")[0] || "Usuario"}</p>
-                          {user.email && (
-                            <p className="text-xs text-[#9CA3AF] mt-0.5">{user.email}</p>
-                          )}
+                          {user.email && <p className="text-xs text-[#9CA3AF] mt-0.5">{user.email}</p>}
                         </div>
-                        <Link
-                          href="/account"
-                          className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
+                        <Link href="/account" className="block px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors" onClick={() => setDropdownOpen(false)}>
                           Mi cuenta
                         </Link>
                         <button
-                          onClick={() => {
-                            handleLogout();
-                            setDropdownOpen(false);
-                          }}
+                          onClick={() => { handleLogout(); setDropdownOpen(false); }}
                           className="block w-full text-left px-4 py-2 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors"
                         >
                           Cerrar sesión
                         </button>
                       </>
                     ) : (
-                      <Link
-                        href="/login"
-                        className="block px-4 py-3 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors text-center"
-                        onClick={() => setDropdownOpen(false)}
-                      >
+                      <Link href="/login" className="block px-4 py-3 text-sm text-[#D1D5DB] hover:bg-[#2A2A2A] hover:text-white transition-colors text-center" onClick={() => setDropdownOpen(false)}>
                         Iniciar sesión
                       </Link>
                     )}
@@ -191,20 +153,8 @@ export default function NavbarShop() {
             placeholder="Buscar productos..."
             className="w-full rounded-full border border-[#333333] bg-[#111111] py-2 pl-10 pr-4 text-sm text-white placeholder:text-[#6B7280] focus:border-[#E8621A] focus:outline-none"
           />
-          <svg
-            width="16"
-            height="16"
-            className="absolute left-3 top-2.5 text-[#6B7280]"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+          <svg width="16" height="16" className="absolute left-3 top-2.5 text-[#6B7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
       </form>

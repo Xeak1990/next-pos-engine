@@ -382,17 +382,17 @@ export default function Navbar({ user }: NavbarProps) {
     return null;
   }
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch (error) {
-      console.error("Error en logout:", error);
-    } finally {
-      document.cookie = "bt_auth=; path=/; max-age=0";
-      document.cookie = "bt_customer_token=; path=/; max-age=0";
-      window.location.href = "/login";
-    }
-  };
+const handleLogout = async () => {
+  try {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  } catch (error) {
+    console.error("Error en logout:", error);
+  } finally {
+    document.cookie = "bt_auth=; path=/; max-age=0";
+    document.cookie = "bt_customer_token=; path=/; max-age=0";
+    window.location.href = "/login";
+  }
+};
 
   const visibleSections = navigationSections
     .map((section) => ({
