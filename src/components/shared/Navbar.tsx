@@ -319,7 +319,7 @@ const navigationSections: NavSection[] = [
         name: "Catálogo Web",
         href: "/",
         icon: CatalogIcon,
-        roles: ["ADMIN", "MANAGER", "CASHIER"],
+        roles: ["ADMIN"], // ✅ Solo ADMIN puede ver el catálogo web
       },
     ],
   },
@@ -378,7 +378,6 @@ interface NavbarProps {
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
 
-  // Si no hay usuario (no autenticado), no renderizamos nada
   if (!user) {
     return null;
   }
@@ -395,7 +394,6 @@ export default function Navbar({ user }: NavbarProps) {
     }
   };
 
-  // Filtrar secciones según el rol del usuario
   const visibleSections = navigationSections
     .map((section) => ({
       ...section,
@@ -403,7 +401,6 @@ export default function Navbar({ user }: NavbarProps) {
     }))
     .filter((section) => section.items.length > 0);
 
-  // Iniciales del usuario
   const userInitials = user.name
     .split(" ")
     .filter(Boolean)
