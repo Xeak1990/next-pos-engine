@@ -59,10 +59,10 @@ export async function middleware(request: NextRequest) {
     if (payload) return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  const isCustomerRoute = CUSTOMER_PATHS.has(pathname) ||
-    pathname.startsWith("/account/") ||
-    pathname.startsWith("/orders/history/");
-    pathname.startsWith("/confirmation/");
+const isCustomerRoute = CUSTOMER_PATHS.has(pathname) ||
+  pathname.startsWith("/account/") ||
+  pathname.startsWith("/orders/history/") ||
+  pathname.startsWith("/confirmation/");   
 
   if (isCustomerRoute) {
     if (!customerToken) return NextResponse.redirect(new URL("/login", request.url));
