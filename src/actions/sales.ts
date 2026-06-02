@@ -2,6 +2,7 @@
 
 import { prisma } from "../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getCurrentMexicoDate } from "../lib/date";  // <-- importar
 
 interface SaleInput {
   storeId: string;
@@ -17,13 +18,18 @@ export async function createSale(data: SaleInput) {
   try {
     const result = await prisma.$transaction(async (tx) => {
       const subtotal = data.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const total = subtotal * 1.16; // IVA incluido
+      const total = subtotal * 1.16;
       console.log(`[createSale] Subtotal: ${subtotal}, Total con IVA: ${total}`);
+
+      // Obtener fecha actual en México (convertida a UTC)
+      const mexicoNowUTC = getCurrentMexicoDate();
+      console.log(`[createSale] Fecha en México (UTC equivalente): ${mexicoNowUTC.toISOString()}`);
 
       const sale = await tx.sale.create({
         data: {
           storeId: data.storeId,
           total: total,
+          createdAt: mexicoNowUTC,   // <-- fecha correcta
           items: {
             create: data.items.map((item) => ({
               variantId: item.variantId,
@@ -34,7 +40,7 @@ export async function createSale(data: SaleInput) {
           },
         },
       });
-      console.log(`[createSale] Venta creada con ID: ${sale.id}`);
+      console.log(`[createSale] Venta creada con ID: ${sale.id}, createdAt (UTC): ${sale.createdAt.toISOString()}`);
 
       // Actualizar inventario
       for (const item of data.items) {
@@ -43,7 +49,7 @@ export async function createSale(data: SaleInput) {
           where: {
             storeId: data.storeId,
             variantId: item.variantId,
-            quantity: { gte: item.quantity }, // Solo si hay stock suficiente
+            quantity: { gte: item.quantity },
           },
           data: { quantity: { decrement: item.quantity } },
         });
@@ -58,10 +64,8 @@ export async function createSale(data: SaleInput) {
       return sale;
     });
 
-    // REVALIDACIONES DE CACHÉ
     revalidatePath("/(shop)", "layout");
     revalidatePath("/(admin)/inventory", "page");
-    // Agregamos las rutas de tu terminal para refrescar el stock
     revalidatePath("/(pos)/terminal", "page");
     revalidatePath("/terminal", "page");
 
