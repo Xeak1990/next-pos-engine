@@ -62,6 +62,7 @@ export async function middleware(request: NextRequest) {
   const isCustomerRoute = CUSTOMER_PATHS.has(pathname) ||
     pathname.startsWith("/account/") ||
     pathname.startsWith("/orders/history/");
+    pathname.startsWith("/confirmation/");
 
   if (isCustomerRoute) {
     if (!customerToken) return NextResponse.redirect(new URL("/login", request.url));
